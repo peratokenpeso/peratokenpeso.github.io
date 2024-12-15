@@ -4,6 +4,15 @@ Peratoken (PESO) is a BEP20 utility token built on the Binance Smart Chain, desi
 
 ---
 
+### Table of Contents
+1. [Introduction](#introduction)
+2. [Background](#background)
+3. [Features](#features)
+4. [Use Cases](#use-cases)
+5. [Conclusion](#conclusion)
+
+---
+
 ## Introduction
 Peratoken aims to empower the digital economy by:
 - Enabling **fast, low-cost, and secure transactions**.
@@ -46,15 +55,6 @@ The digital currency space is currently dominated by a few major players, limiti
 
 ## Conclusion
 PESO is a revolutionary BEP20 utility token designed for the modern digital economy. With fast transaction speeds, low fees, and a focus on inclusivity, PESO empowers merchants, consumers, and service providers to participate equally. Its foundation on the Binance Smart Chain ensures security and stability, making it a trusted medium for value transfer and storage.
-
----
-
-### Table of Contents
-1. [Introduction](#introduction)
-2. [Background](#background)
-3. [Features](#features)
-4. [Use Cases](#use-cases)
-5. [Conclusion](#conclusion)
 
 ---
 
