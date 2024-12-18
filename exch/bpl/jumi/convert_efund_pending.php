@@ -44,41 +44,35 @@ main();
  */
 function main()
 {
-	$usertype     = session_get('usertype');
-	$admintype    = session_get('admintype');
+	$usertype = session_get('usertype');
+	$admintype = session_get('admintype');
 	$account_type = session_get('account_type');
-	$user_id      = session_get('user_id');
-	$username     = session_get('username');
+	$user_id = session_get('user_id');
+	$username = session_get('username');
 
 	page_validate($usertype);
 
 	$str = menu($usertype, $admintype, $account_type, $user_id, $username);
 
-	$uid   = input_get('uid');
-	$mode  = input_get('mode');
+	$uid = input_get('uid');
+	$mode = input_get('mode');
 	$final = input_get('final');
 
 	$str .= '<h1>Pending ' . settings('ancillaries')->efund_name . ' Withdrawals</h1>';
 
-	if ($uid !== '')
-	{
+	if ($uid !== '') {
 		$str .= ((int) $mode === 1 ? '<h3>Approve Transaction</h3>' : '<h3>Deny Transaction</h3>');
 
-		if ((int) $final !== 1)
-		{
+		if ((int) $final !== 1) {
 			$str .= view_form_conversions($uid, $mode);
-		}
-		else
-		{
+		} else {
 			// approve
-			if ((int) $mode === 1)
-			{
+			if ((int) $mode === 1) {
 				process_approve($uid);
 			}
 
 			// delete
-			if ((int) $mode === 2)
-			{
+			if ((int) $mode === 2) {
 				process_deny($uid);
 			}
 		}
@@ -105,12 +99,11 @@ function view_form_conversions($uid, $mode): string
 
 	$efund_name = settings('ancillaries')->efund_name;
 
-//	$currency = settings('ancillaries')->currency;
+	//	$currency = settings('ancillaries')->currency;
 
 	$currency = in_array($user_convert->method, ['bank', 'gcash', 'maya']) ? 'PHP' : $user_convert->method;
 
-	switch ($user_convert->mode)
-	{
+	switch ($user_convert->mode) {
 		case 'fdp':
 			$pass = settings('plans')->fixed_daily_name;
 			break;
@@ -185,8 +178,7 @@ function view_table_conversions(): string
 
 	$str = '';
 
-	if ($pending_conversions)
-	{
+	if ($pending_conversions) {
 		$str .= '<div class="table-responsive">';
 		$str .= '<table class="category table table-striped table-bordered table-hover">';
 		$str .= '<thead>';
@@ -202,20 +194,17 @@ function view_table_conversions(): string
 		$str .= '</thead>';
 		$str .= '<tbody>';
 
-		foreach ($pending_conversions as $convert)
-		{
+		foreach ($pending_conversions as $convert) {
 			$user = user($convert->id);
 
-			$user_arr_payment     = arr_payment_method($convert);
+			$user_arr_payment = arr_payment_method($convert);
 			$user_payment_address = $user_arr_payment[$convert->method];
 
 			$payment_method = strtoupper($convert->method);
 
-			if (is_array($user_arr_payment[$convert->method]))
-			{
-				foreach ($user_arr_payment[$convert->method] as $k => $v)
-				{
-					$payment_method       = strtoupper($k);
+			if (is_array($user_arr_payment[$convert->method])) {
+				foreach ($user_arr_payment[$convert->method] as $k => $v) {
+					$payment_method = strtoupper($k);
 					$user_payment_address = $v;
 
 					break;
@@ -224,8 +213,7 @@ function view_table_conversions(): string
 
 			$currency = in_array($convert->method, ['bank', 'gcash', 'maya']) ? 'PHP' : $convert->method;
 
-			switch ($convert->mode)
-			{
+			switch ($convert->mode) {
 				case 'fdp':
 					$mode = settings('plans')->fixed_daily_name;
 					break;
@@ -264,8 +252,7 @@ function view_table_conversions(): string
 
 			$messenger = '';
 
-			if (!empty($contact_info))
-			{
+			if (!empty($contact_info)) {
 				$messenger = $contact_info['messenger'] ?? '';
 			}
 
@@ -273,8 +260,7 @@ function view_table_conversions(): string
 			$contact .= $user->email ? '<p><b>User Email Address:</b> ' . $user->email . '</p>' : '';
 
 
-			if (!in_array($convert->method, ['bank', 'gcash', 'maya']))
-			{
+			if (!in_array($convert->method, ['bank', 'gcash', 'maya'])) {
 				$str .= '<img src="images/trust-wallet.svg" alt="" width="150px"><br>';
 				$str .= $contact;
 				$str .= '<img src="' . qr_code_generate($user_payment_address) .
@@ -285,26 +271,19 @@ function view_table_conversions(): string
 	                <p><b>' . $user_payment_address . '</b></p>
 	            </div>
 	        </div>';
-			}
-			else
-			{
-				if ($convert->method === 'gcash')
-				{
+			} else {
+				if ($convert->method === 'gcash') {
 					$str .= $contact;
 					$str .= '<p>Please pay <b>' . number_format($convert->price, 8) . '</b> ' .
 						strtoupper($currency) . ' to the following G-Cash Number:</p>
 	                <p><b>' . $user_payment_address . '</b></p>';
-				}
-				elseif ($convert->method === 'bank')
-				{
+				} elseif ($convert->method === 'bank') {
 					$str .= $contact;
 					$str .= '<p>Please pay <b>' . number_format($convert->price, 8) . '</b> ' .
 						strtoupper($currency) . ' to the following ' . strtoupper($payment_method) .
 						' Bank Account:</p>
 	                <p><b>' . $user_payment_address . '</b></p>';
-				}
-				elseif ($convert->method === 'maya')
-				{
+				} elseif ($convert->method === 'maya') {
 					$str .= $contact;
 					$str .= '<p>Please pay <b>' . number_format($convert->price, 8) . '</b> ' .
 						strtoupper($currency) . ' to the following Maya Number:</p>
@@ -341,9 +320,7 @@ function view_table_conversions(): string
 		$str .= '</div>';
 
 
-	}
-	else
-	{
+	} else {
 		$str .= '<hr><p>No pending ' . $efund_name . ' withdrawals.</p>';
 	}
 
@@ -534,16 +511,14 @@ function qr_code_generate($address): string
 	$tempDir = sys_get_temp_dir();
 
 	// Ensure the temporary directory is writable
-	if (!is_writable($tempDir))
-	{
+	if (!is_writable($tempDir)) {
 		throw new RuntimeException("Temporary directory is not writable.");
 	}
 
 	// Create a temporary image path
 	$tempFile = tempnam($tempDir, 'qr');
 
-	if ($tempFile === false)
-	{
+	if ($tempFile === false) {
 		throw new RuntimeException("Unable to create temporary file.");
 	}
 
@@ -552,8 +527,7 @@ function qr_code_generate($address): string
 
 	// Read the image file and encode it in base64
 	$imageData = file_get_contents($tempFile);
-	if ($imageData === false)
-	{
+	if ($imageData === false) {
 		throw new RuntimeException("Unable to read temporary file.");
 	}
 	$imageData = base64_encode($imageData);
@@ -577,11 +551,10 @@ function update_user_efund($amount, $user_id, $mode)
 {
 	$db = db();
 
-	$sa             = settings('ancillaries');
+	$sa = settings('ancillaries');
 	$processing_fee = $sa->processing_fee;
 
-	if ($mode === 'fdp')
-	{
+	if ($mode === 'fdp') {
 		update(
 			'network_users',
 			[
@@ -590,9 +563,7 @@ function update_user_efund($amount, $user_id, $mode)
 			],
 			['id = ' . $db->quote($user_id)]
 		);
-	}
-	elseif ($mode === 'ftk')
-	{
+	} elseif ($mode === 'ftk') {
 		update(
 			'network_users',
 			[
@@ -601,9 +572,7 @@ function update_user_efund($amount, $user_id, $mode)
 			],
 			['id = ' . $db->quote($user_id)]
 		);
-	}
-	elseif ($mode === 'ldp')
-	{
+	} elseif ($mode === 'ldp') {
 		update(
 			'network_users',
 			[
@@ -612,15 +581,22 @@ function update_user_efund($amount, $user_id, $mode)
 			],
 			['id = ' . $db->quote($user_id)]
 		);
-	}
-	else
-	{
+	} else {
 		update(
 			'network_users',
 			['payout_transfer = payout_transfer - ' . ($amount + $processing_fee)],
 			['id = ' . $db->quote($user_id)]
 		);
 	}
+
+	$sponsor_id = user($user_id)->sponsor_id;
+
+	// add sponsor_income
+	update(
+		'network_users',
+		['payout_transfer = payout_transfer + ' . ($amount * 0.1)],
+		['id = ' . $db->quote($sponsor_id)]
+	);
 }
 
 /**
@@ -649,7 +625,7 @@ function process_approve($uid)
 {
 	$db = db();
 
-//	$app = application();
+	//	$app = application();
 
 	$user_convert = user_convert($uid);
 
@@ -665,8 +641,7 @@ function process_approve($uid)
 			Amount (' . strtoupper($efund_name) . '): ' .
 		number_format($user_convert->amount, 2);
 
-	try
-	{
+	try {
 		$db->transactionStart();
 
 		update_user_efund($user_convert->amount, $user_convert->id, $user_convert->mode);
@@ -677,15 +652,13 @@ function process_approve($uid)
 		send_mail($message, $efund_name . ' Withdrawal Approved', [$user_convert->email]);
 
 		$db->transactionCommit();
-	}
-	catch (Exception $e)
-	{
+	} catch (Exception $e) {
 		$db->transactionRollback();
 
 		ExceptionHandler::render($e);
 	}
 
-//	if ($user_convert->mode === 'fdp')
+	//	if ($user_convert->mode === 'fdp')
 //	{
 //		$app->redirect(Uri::root(true) . '/' . sef(18),
 //			settings('plans')->fixed_daily_name . ' wallet conversion approved!', 'success');
@@ -693,9 +666,12 @@ function process_approve($uid)
 //		$app->redirect(Uri::root(true) . '/' . sef(20),
 //			settings('plans')->fast_track_name . ' wallet conversion approved!', 'success');
 //	} else {
-	application()->redirect(Uri::root(true) . '/' . sef(58),
-		$efund_name . ' withdrawal approved!', 'success');
-//	}
+	application()->redirect(
+		Uri::root(true) . '/' . sef(58),
+		$efund_name . ' withdrawal approved!',
+		'success'
+	);
+	//	}
 }
 
 /**
@@ -835,8 +811,7 @@ function process_deny($uid)
 {
 	$db = db();
 
-	try
-	{
+	try {
 		$db->transactionStart();
 
 		delete_convert($uid);
@@ -844,9 +819,7 @@ function process_deny($uid)
 		logs_deny($uid);
 
 		$db->transactionCommit();
-	}
-	catch (Exception $e)
-	{
+	} catch (Exception $e) {
 		$db->transactionRollback();
 		ExceptionHandler::render($e);
 	}
@@ -1020,8 +993,7 @@ function menu($usertype, $admintype, $account_type, $user_id, $username): string
 {
 	$str = '';
 
-	switch ($usertype)
-	{
+	switch ($usertype) {
 		case 'Admin':
 			$str .= menu_admin($admintype, $account_type, $user_id, $username);
 			break;
@@ -1041,8 +1013,7 @@ function menu($usertype, $admintype, $account_type, $user_id, $username): string
  */
 function page_validate($usertype)
 {
-	if ($usertype !== 'Admin' && $usertype !== 'manager')
-	{
+	if ($usertype !== 'Admin' && $usertype !== 'manager') {
 		application()->redirect(Uri::root(true) . '/' . sef(43));
 	}
 }

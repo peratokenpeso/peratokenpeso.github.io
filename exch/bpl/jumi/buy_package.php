@@ -92,18 +92,18 @@ main();
  */
 function main()
 {
-	$user_id      = session_get('user_id');
-	$admintype    = session_get('admintype');
-	$usertype     = session_get('usertype');
+	$user_id = session_get('user_id');
+	$admintype = session_get('admintype');
+	$usertype = session_get('usertype');
 	$account_type = session_get('account_type');
 
-	$type   = input_get('type', '', 'RAW');
+	$type = input_get('type', '', 'RAW');
 	$method = input_get('method', '', 'RAW');
 
-//	$upline   = input_get('upline', get_upline($user_id));
+	//	$upline   = input_get('upline', get_upline($user_id));
 //	$position = input_get('position', get_position($upline));
 
-	$upline   = input_get('upline');
+	$upline = input_get('upline');
 	$position = input_get('position');
 
 	page_validate($usertype, $account_type);
@@ -112,14 +112,11 @@ function main()
 
 	session_set('edit', false);
 
-	if ($type === '' || ($method === '' && settings('plans')->trading))
-	{
+	if ($type === '' || ($method === '' && settings('plans')->trading)) {
 		$str .= view_package($user_id);
-	}
-	else
-	{
+	} else {
 		$final = input_get('final');
-		$edit  = session_get('edit', false);
+		$edit = session_get('edit', false);
 
 		$str .= buy_package($user_id, $admintype, $type, $method, $final, $upline, $position, $edit);
 	}
@@ -136,7 +133,7 @@ function main()
  */
 function view_package($user_id): string
 {
-//	$sa = settings('ancillaries');
+	//	$sa = settings('ancillaries');
 
 	$str = '<h1>Subscribe</h1>
     <form method="post" onsubmit="submit.disabled = true; return true;">
@@ -148,7 +145,7 @@ function view_package($user_id): string
 	$str .= account_select();
 	$str .= payment_select();
 	$str .= '<input type="submit" name="submit" value="Subscribe" class="uk-button uk-button-primary">';
-//	$str .= '<span style="float: right;"><span style="color: green; font-weight: bold">
+	//	$str .= '<span style="float: right;"><span style="color: green; font-weight: bold">
 //		<a href="' . sef(73) . '">Buy ' . $sa->efund_name . '</a></span>';
 	$str .= '</td>
             </tr>
@@ -221,7 +218,7 @@ function account_options(): string
 
 	return $str;
 
-//	return $settings_entry->basic_entry > 0 ? '<option value="basic">' .
+	//	return $settings_entry->basic_entry > 0 ? '<option value="basic">' .
 //		$settings_entry->basic_package_name . '</option>' : '';
 }
 
@@ -233,17 +230,16 @@ function account_options(): string
  */
 function payment_select(): string
 {
-	$sa = settings('ancillaries');
+	// $sa = settings('ancillaries');
 
-	$str = '';
+	$str = '<input name="method" value="efund" type="hidden">';
 
-	if (settings('plans')->trading)
-	{
-		$str .= '<select name="method" id="method" style="float: left">';
-		$str .= '<option value="efund" selected>Payment method</option>';
-		$str .= '<option value="efund">' . $sa->efund_name . '</option>';
-		$str .= '</select>';
-	}
+	// if (settings('plans')->trading) {
+	// 	$str .= '<select name="method" id="method" style="float: left">';
+	// 	$str .= '<option value="efund" selected>Payment method</option>';
+	// 	$str .= '<option value="efund">' . $sa->efund_name . '</option>';
+	// 	$str .= '</select>';
+	// }
 
 	return $str;
 }
@@ -278,8 +274,8 @@ function validate_input($user_id, $admintype, $type, $method)
 {
 	$sa = settings('ancillaries');
 
-	$settings_plans   = settings('plans');
-	$settings_entry   = settings('entry');
+	$settings_plans = settings('plans');
+	$settings_entry = settings('entry');
 	$settings_trading = settings('trading');
 
 	$app = application();
@@ -288,41 +284,41 @@ function validate_input($user_id, $admintype, $type, $method)
 
 	$entry = $settings_entry->{$type . '_entry'};
 
-	if ((double) $user->payout_transfer <= 0 && (double) $user->balance_fmc <= 0)
-	{
+	if ((double) $user->payout_transfer <= 0 && (double) $user->balance_fmc <= 0) {
 		$err = 'Empty balance!';
 		$app->redirect(Uri::root(true) . '/' . sef(10), $err, 'error');
 	}
 
-	if ($user->payout_transfer < $entry && (!$settings_plans->trading || $method === 'efund'))
-	{
+	// start: check if user has enough efund to buy the package
+	if ($user->payout_transfer < $entry && (!$settings_plans->trading && $method === 'efund')) {
 		$err = 'Not enough ' . $sa->efund_name . '!';
 		$app->redirect(Uri::root(true) . '/' . sef(10), $err, 'error');
 	}
+	// end: check if user has enough efund to buy the package
 
-	if ($admintype === 'Super' &&
+	if (
+		$admintype === 'Super' &&
 		session_get('edit', false) === true &&
-		input_get('date', '', 'RAW') === '')
-	{
+		input_get('date', '', 'RAW') === ''
+	) {
 		$err = 'Please specify your Activation Date!';
 		$app->redirect(Uri::root(true) . '/' . sef(10), $err, 'error');
 	}
 
-	if ($type === 'none')
-	{
+	if ($type === 'none') {
 		$err = 'Select any package!';
 		$app->redirect(Uri::root(true) . '/' . sef(10), $err, 'error');
 	}
 
-	if ($method === 'none' && $settings_plans->trading)
-	{
+	if ($method === 'none' && $settings_plans->trading) {
 		$err = 'Select any method!';
 		$app->redirect(Uri::root(true) . '/' . sef(10), $err, 'error');
 	}
 
-	if ($method === 'token' && $settings_plans->trading &&
-		$user->balance_fmc < ($entry * usdt_currency() * $settings_trading->fmc_to_usd))
-	{
+	if (
+		$method === 'token' && $settings_plans->trading &&
+		$user->balance_fmc < ($entry * usdt_currency() * $settings_trading->fmc_to_usd)
+	) {
 		$err = 'Not enough ' . $settings_trading->token_name . '!';
 		$app->redirect(Uri::root(true) . '/' . sef(10), $err, 'error');
 	}
@@ -348,12 +344,9 @@ function buy_package($user_id, $admintype, $type, $method, $final, $upline, $pos
 
 	$str = '';
 
-	if ((int) $final !== 1)
-	{
+	if ((int) $final !== 1) {
 		$str .= view_form_confirm($user_id, $type, $method);
-	}
-	else
-	{
+	} else {
 		process_buy($user_id, $admintype, $type, $method, $upline, $position, $edit);
 	}
 
@@ -397,7 +390,7 @@ function process_buy($user_id, $admintype, $type, $method, $upline, $position, $
 {
 	$app = application();
 
-//	has_internet(/*false*/) or $app->redirect(Uri::root(true) .
+	//	has_internet(/*false*/) or $app->redirect(Uri::root(true) .
 //		'/' . sef(10), 'Abnormal Network Connection!', 'error');
 
 	Session::checkToken() or $app->redirect(Uri::root(true) .
@@ -405,7 +398,7 @@ function process_buy($user_id, $admintype, $type, $method, $upline, $position, $
 
 	$db = db();
 
-	$user    = user($user_id);
+	$user = user($user_id);
 	$sponsor = user($user->sponsor_id)->username;
 
 	validate_binary($upline, $position, $type, 'activate');
@@ -418,8 +411,8 @@ function process_buy($user_id, $admintype, $type, $method, $upline, $position, $
 
 	$user = user($user_id);
 
-	$username   = $user->username;
-	$email      = $user->email;
+	$username = $user->username;
+	$email = $user->email;
 	$sponsor_id = $user->sponsor_id;
 
 	$sponsor = user($sponsor_id);
@@ -438,12 +431,10 @@ function process_buy($user_id, $admintype, $type, $method, $upline, $position, $
 	$message_user = 'Congratulations on your successful ' . $code_type_mod . ' ' .
 		($sa->payment_mode === 'CODE' ? 'registration' : 'activation') . '!<br><hr>' . $body;
 
-	try
-	{
+	try {
 		$db->transactionStart();
 
-		if (update_users($user_id, $admintype, $type, $method, $edit))
-		{
+		if (update_users($user_id, $admintype, $type, $method, $edit)) {
 			logs($user_id, $type, $admintype, $edit);
 		}
 
@@ -456,20 +447,17 @@ function process_buy($user_id, $admintype, $type, $method, $upline, $position, $
 		send_mail($message_admin, 'A New Member has been ' .
 			($sa->payment_mode === 'CODE' ? 'Registered' : 'Activated') . '!');
 
-		if ($email !== '')
-		{
+		if ($email !== '') {
 			send_mail($message_user, 'Activation Successful!', [$email]);
 		}
 
 		$db->transactionCommit();
-	}
-	catch (Exception $e)
-	{
+	} catch (Exception $e) {
 		$db->transactionRollback();
 		ExceptionHandler::render($e);
 	}
 
-//	send_mail($user_id, $type);
+	//	send_mail($user_id, $type);
 
 	$app->redirect(Uri::root(true) . '/' . sef(41), $username .
 		'\'s ' . ucfirst(settings('entry')->{$type . '_package_name'}) . ' ' .
@@ -479,8 +467,7 @@ function process_buy($user_id, $admintype, $type, $method, $upline, $position, $
 
 function validate_binary($upline, $position, string $account_type_new = 'starter', string $prov = 'code')
 {
-	if (settings('plans')->binary_pair)
-	{
+	if (settings('plans')->binary_pair) {
 		$app = application();
 
 		$user_upline = username_upline($upline);
@@ -491,37 +478,34 @@ function validate_binary($upline, $position, string $account_type_new = 'starter
 
 		$sef = $register ? 65 : 10;
 
-		if ($upline === '')
-		{
+		if ($upline === '') {
 			$err = 'Please specify your Upline.<br>';
 			$app->redirect(Uri::root(true) . '/' . sef($sef), $err, 'error');
 		}
 
 		$user_upline = username_upline($upline);
 
-		if (empty($user_upline))
-		{
+		if (empty($user_upline)) {
 			$err = 'Invalid Upline!<br>';
 			$app->redirect(Uri::root(true) . '/' . sef($sef), $err, 'error');
 		}
 
-		if (count(binary_downlines($upline_id)) >= 2)
-		{
+		if (count(binary_downlines($upline_id)) >= 2) {
 			$err = 'Invalid Upline Username!<br>';
 			$app->redirect(Uri::root(true) . '/' . sef($sef), $err, 'error');
 		}
 
 		$username_paid = user_username_paid($upline);
 
-		if (empty($username_paid))
-		{
+		if (empty($username_paid)) {
 			$err = 'Invalid Upline!<br>';
 			$app->redirect(Uri::root(true) . '/' . sef($sef), $err, 'error');
 		}
 
-		if (has_position($upline_id, $position) ||
-			(!empty($username_paid) && !empty(user_binary_active($username_paid->id, $position))))
-		{
+		if (
+			has_position($upline_id, $position) ||
+			(!empty($username_paid) && !empty(user_binary_active($username_paid->id, $position)))
+		) {
 			$err = 'Invalid Position!<br>';
 			$app->redirect(Uri::root(true) . '/' . sef($sef), $err, 'error');
 		}
@@ -653,30 +637,34 @@ function update_users($user_id, $admintype, $type, $method, $edit)
 
 	$entry = settings('entry')->{$type . '_entry'};
 
-	if ($edit === true && $admintype === 'Super')
-	{
+	if ($edit === true && $admintype === 'Super') {
 		$date = input_get('date', time(), 'RAW');
 	}
 
-	$fields = [($method !== 'token' ? ('payout_transfer = payout_transfer - ' .
-		$entry) : ('balance_fmc = balance_fmc - ' .
-		($entry * usdt_currency() * settings('trading')->fmc_to_usd))),
+	$fields = [
+		($method !== 'token' ? ('payout_transfer = payout_transfer - ' .
+			$entry) : ('balance_fmc = balance_fmc - ' .
+			($entry * usdt_currency() * settings('trading')->fmc_to_usd))),
 		'account_type = ' . $db->quote($type),
-		'date_activated = ' . ($edit && isset($date) ? $db->quote($date) : $db->quote(time()))];
+		'date_activated = ' . ($edit && isset($date) ? $db->quote($date) : $db->quote(time()))
+	];
 
 	$type_token = settings('trading')->{$type . '_fmc'};
 
-	if ($type_token > 0 && settings('plans')->trading)
-	{
+	if ($type_token > 0 && settings('plans')->trading) {
 		$fields[] = 'balance_fmc = balance_fmc + ' . $type_token;
 
-		update('network_fmc',
-			['balance = balance - ' . $type_token]);
+		update(
+			'network_fmc',
+			['balance = balance - ' . $type_token]
+		);
 	}
 
-	return update('network_users',
+	return update(
+		'network_users',
 		$fields,
-		['id = ' . $db->quote($user_id)]);
+		['id = ' . $db->quote($user_id)]
+	);
 }
 
 /**
@@ -688,10 +676,11 @@ function update_users($user_id, $admintype, $type, $method, $edit)
  */
 function page_validate($usertype, $account_type)
 {
-	if ($usertype === '' ||
+	if (
+		$usertype === '' ||
 		$account_type !== 'starter' ||
-		settings('ancillaries')->payment_mode !== 'ECASH')
-	{
+		settings('ancillaries')->payment_mode !== 'ECASH'
+	) {
 		application()->redirect(Uri::root(true) . '/' . sef(43));
 	}
 }
@@ -709,11 +698,11 @@ function view_form_confirm($user_id, $type, $method): string
 {
 	$sa = settings('ancillaries');
 
-	$settings_plans   = settings('plans');
+	$settings_plans = settings('plans');
 	$settings_trading = settings('trading');
 
 	$currency = settings('ancillaries')->currency;
-	$entry    = settings('entry')->{$type . '_entry'};
+	$entry = settings('entry')->{$type . '_entry'};
 
 	$user = user($user_id);
 
@@ -724,15 +713,12 @@ function view_form_confirm($user_id, $type, $method): string
             <p><strong style="font-size: large">Confirm Activation</strong></p>
             <table class="category table table-striped table-bordered table-hover">';
 
-	if ($method === 'token')
-	{
+	if ($method === 'token') {
 		$str .= '<tr>
                 <td>Token:</td>
                 <td>' . number_format($user->balance_fmc, 8) . ' ' . $settings_trading->token_name . '</td>
             </tr>';
-	}
-	else
-	{
+	} else {
 		$str .= '<tr>
                 <td>' . $sa->efund_name . ':</td>
                 <td>' . number_format($user->payout_transfer, 8) . ' ' . $currency . '</td>
@@ -748,8 +734,7 @@ function view_form_confirm($user_id, $type, $method): string
             <td>' . number_format($entry, 8) . ' ' . $currency . '</td>
         </tr>';
 
-	if ($settings_plans->trading)
-	{
+	if ($settings_plans->trading) {
 		$str .= '<tr>
                     <td>Method:</td>
                     <td>' . $method . '</td>
@@ -757,9 +742,9 @@ function view_form_confirm($user_id, $type, $method): string
 	}
 
 	if (/*settings('binary')->{$type . '_pairs'} > 0 &&*/
-	settings('plans')->binary_pair/* &&
-		empty(user_plan($user_id, 'binary'))*/)
-	{
+		settings('plans')->binary_pair/* &&
+empty(user_plan($user_id, 'binary'))*/
+	) {
 		$str .= '<tr>
             <td><label for="upline">Upline Username: *</label></td>
             <td><input type="text"
@@ -819,8 +804,7 @@ function logs($user_id, $type, $admintype, $edit)
 
 	$date = time();
 
-	if ($edit === true && $admintype === 'Super')
-	{
+	if ($edit === true && $admintype === 'Super') {
 		$date = input_get('date');
 	}
 
@@ -830,7 +814,7 @@ function logs($user_id, $type, $admintype, $edit)
 
 	$user = user($user_id);
 
-	$username   = $user->username;
+	$username = $user->username;
 	$sponsor_id = $user->sponsor_id;
 
 	$sponsor_name = user($sponsor_id)->username;
@@ -912,8 +896,7 @@ function process_direct_referral($user_id, $code_type, $username, $sponsor, $dat
 {
 	$Settings_plans = settings('plans');
 
-	if ($Settings_plans->direct_referral || $Settings_plans->binary_pair)
-	{
+	if ($Settings_plans->direct_referral || $Settings_plans->binary_pair) {
 		direct_referral($user_id, $code_type, $username, $sponsor, $date, $prov);
 	}
 }
@@ -927,13 +910,13 @@ function process_direct_referral($user_id, $code_type, $username, $sponsor, $dat
 function process_indirect_referral($insert_id, $code_type)
 {
 	$username = input_get('username');
-	$sponsor  = input_get('sponsor');
+	$sponsor = input_get('sponsor');
 
 	$edit = session_get('edit');
 
-	$settings_plans    = settings('plans');
+	$settings_plans = settings('plans');
 	$settings_indirect = settings('indirect_referral');
-	$settings_entry    = settings('entry');
+	$settings_entry = settings('entry');
 
 	$indirect_referral_level = $settings_indirect->{$code_type . '_indirect_referral_level'};
 
@@ -941,8 +924,7 @@ function process_indirect_referral($insert_id, $code_type)
 
 	$user_sponsor = user_username($sponsor);
 
-	if (!empty($user_sponsor))
-	{
+	if (!empty($user_sponsor)) {
 		$sponsor_id = $user_sponsor[0]->id;
 	}
 
@@ -950,9 +932,10 @@ function process_indirect_referral($insert_id, $code_type)
 
 	$db = db();
 
-	if ($indirect_referral_level &&
-		$settings_plans->indirect_referral)
-	{
+	if (
+		$indirect_referral_level &&
+		$settings_plans->indirect_referral
+	) {
 		insert(
 			'network_indirect',
 			['id', 'user_id'],
@@ -995,8 +978,7 @@ function process_indirect_referral($insert_id, $code_type)
  */
 function process_passup($insert_id, $code_type, $entry_name, $sponsor)
 {
-	if (settings('plans')->passup)
-	{
+	if (settings('plans')->passup) {
 		passup($insert_id, $code_type, $entry_name, user_username($sponsor)->id);
 	}
 }
@@ -1051,9 +1033,10 @@ function process_compound_daily($user_id, $type)
 	$settings_investment = settings('investment');
 
 	// compound interest daily
-	if ($settings_investment->{$type . '_principal'} > 0 &&
-		empty(user_plan($user_id, 'compound')))
-	{
+	if (
+		$settings_investment->{$type . '_principal'} > 0 &&
+		empty(user_plan($user_id, 'compound'))
+	) {
 		$compound_daily_insert = insert(
 			'network_compound',
 			[
@@ -1074,8 +1057,7 @@ function process_compound_daily($user_id, $type)
 			]
 		);
 
-		if ($compound_daily_insert)
-		{
+		if ($compound_daily_insert) {
 			logs_compound_daily($user_id, $type);
 		}
 	}
@@ -1106,7 +1088,8 @@ function logs_compound_daily($user_id, $type)
 		[
 			$db->quote($user_id),
 			$db->quote($user->sponsor_id),
-			$db->quote('<b>' . $settings_plans->etrade_name . ' Entry: </b> <a href="' .
+			$db->quote(
+				'<b>' . $settings_plans->etrade_name . ' Entry: </b> <a href="' .
 				sef(44) . qs() . 'uid=' . $user_id . '">' . $user->username .
 				'</a> has entered into ' . $settings_plans->etrade_name . ' upon ' .
 				ucfirst(settings('entry')->{$type . '_package_name'}) . ' activation.'
@@ -1129,9 +1112,10 @@ function process_fixed_daily($user_id, $type)
 	$settings_investment = settings('investment');
 
 	// fixed interest daily
-	if ($settings_investment->{$type . '_fixed_daily_principal'} > 0 &&
-		empty(user_plan($user_id, 'fixed_daily')))
-	{
+	if (
+		$settings_investment->{$type . '_fixed_daily_principal'} > 0 &&
+		empty(user_plan($user_id, 'fixed_daily'))
+	) {
 		$fixed_daily_insert = insert(
 			'network_fixed_daily',
 			[
@@ -1150,8 +1134,7 @@ function process_fixed_daily($user_id, $type)
 			]
 		);
 
-		if ($fixed_daily_insert)
-		{
+		if ($fixed_daily_insert) {
 			logs_fixed_daily($user_id, $type);
 		}
 	}
@@ -1203,10 +1186,11 @@ function logs_fixed_daily($user_id, $type)
  */
 function process_leadership_passive($user_id, $type, $username, $sponsor, $date, $prov)
 {
-	if (settings('plans')->leadership_passive &&
+	if (
+		settings('plans')->leadership_passive &&
 		settings('leadership_passive')->{$type . '_leadership_passive_level'} &&
-		empty(user_plan($user_id, 'leadership_passive')))
-	{
+		empty(user_plan($user_id, 'leadership_passive'))
+	) {
 		insert_leadership_passive($user_id, $type, $username, $sponsor, $date, $prov);
 	}
 }
@@ -1221,17 +1205,18 @@ function process_leadership_passive($user_id, $type, $username, $sponsor, $date,
  */
 function process_unilevel($user_id, $type, $date, $prov)
 {
-	if (settings('plans')->unilevel &&
-		settings('unilevel')->{$type . '_unilevel_level'})
-	{
+	if (
+		settings('plans')->unilevel &&
+		settings('unilevel')->{$type . '_unilevel_level'}
+	) {
 		$user = user($user_id);
 
 		$username = $user->username;
-		$sponsor  = user($user->sponsor_id)->username;
+		$sponsor = user($user->sponsor_id)->username;
 
 		insert_unilevel($user_id, $type, $username, $sponsor, $date, $prov);
 
-//        logs_unilevel($user_id, $type, $date);
+		//        logs_unilevel($user_id, $type, $date);
 	}
 }
 
@@ -1246,12 +1231,9 @@ function source($prov): string
 {
 	$source = ' Sign Up';
 
-	if ($prov === 'activate')
-	{
+	if ($prov === 'activate') {
 		$source = ' Activation';
-	}
-	elseif ($prov === 'upgrade')
-	{
+	} elseif ($prov === 'upgrade') {
 		$source = ' Upgrade';
 	}
 
@@ -1266,8 +1248,7 @@ function source($prov): string
  */
 function process_binary($user_id)
 {
-	if (settings('plans')->binary_pair)
-	{
+	if (settings('plans')->binary_pair) {
 		binary_package($user_id, 'activate');
 	}
 }
@@ -1298,19 +1279,19 @@ function process_binary($user_id)
 function process_leadership_binary($user_id, $type)
 {
 	$settings_leadership = settings('leadership');
-	$settings_plans      = settings('plans');
+	$settings_plans = settings('plans');
 
 	$type_level = $settings_leadership->{$type . '_leadership_level'};
 
-	if ($type_level > 0 && $settings_plans->leadership_binary)
-	{
-		if (empty(user_plan($user_id, 'leadership')))
-		{
-			insert('network_leadership',
+	if ($type_level > 0 && $settings_plans->leadership_binary) {
+		if (empty(user_plan($user_id, 'leadership'))) {
+			insert(
+				'network_leadership',
 				['user_id'],
-				[db()->quote($user_id)]);
+				[db()->quote($user_id)]
+			);
 
-//			logs_indirect_referral($user_id, $type, $date);
+			//			logs_indirect_referral($user_id, $type, $date);
 		}
 
 		leadership_binary(/*$user_id, 'upgrade'*/);
@@ -1395,7 +1376,7 @@ function process_plans($user_id, $type, $username, $sponsor, $date, $prov)
 	// test disable
 	process_leadership_binary($user_id, $type);
 	process_unilevel($user_id, $type, $date, $prov);
-//
+	//
 //	process_harvest();
 //	process_royalty($user_id);
 //	process_passup($user_id);
@@ -1414,13 +1395,12 @@ function process_plans($user_id, $type, $username, $sponsor, $date, $prov)
  */
 function input_get_date()
 {
-	$edit      = session_get('edit', false);
+	$edit = session_get('edit', false);
 	$admintype = session_get('admintype', false);
 
 	$date = 0;
 
-	if ($edit && $admintype === 'Super')
-	{
+	if ($edit && $admintype === 'Super') {
 		$date = input_get('date', '', 'RAW');
 	}
 

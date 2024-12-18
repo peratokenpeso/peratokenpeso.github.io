@@ -32,12 +32,9 @@ function main()
 	$str .= paginate();
 	$str .= header();
 
-	if (count(users_desc()) > 0)
-	{
+	if (count(users_desc()) > 0) {
 		$str .= view_members(5);
-	}
-	else
-	{
+	} else {
 		$str .= '<hr><p>No members yet.</p>';
 	}
 
@@ -56,14 +53,14 @@ function view_members($limit): string
 {
 	$usertype = session_get('usertype');
 	$username = input_get('username');
-	$page     = substr(input_get('page', 0), 0, 3);
+	$page = substr(input_get('page', 0), 0, 3);
 
 	$settings_ancillaries = settings('ancillaries');
-	$settings_plans       = settings('plans');
+	$settings_plans = settings('plans');
 
 	$currency = $settings_ancillaries->currency;
 
-	$limit_to   = $limit;
+	$limit_to = $limit;
 	$limit_from = $limit_to * $page;
 
 	$str = '<table class="category table table-striped table-bordered table-hover">';
@@ -76,8 +73,7 @@ function view_members($limit): string
 	$str .= '<th>Username</th>';
 	$str .= '<th>Account</th>';
 
-	if ($settings_plans->royalty)
-	{
+	if ($settings_plans->royalty) {
 		$str .= '<th>' . $settings_plans->royalty_name . '</th>';
 	}
 
@@ -86,14 +82,12 @@ function view_members($limit): string
 	if (
 		$settings_plans->binary_pair &&
 		binary_all()
-	)
-	{
+	) {
 		$str .= '<th>Left</th>';
 		$str .= '<th>Right</th>';
 	}
 
-	if ($usertype === 'Admin')
-	{
+	if ($usertype === 'Admin') {
 		$str .= '<th>Actions</th>';
 	}
 
@@ -101,17 +95,13 @@ function view_members($limit): string
 	$str .= '</thead>';
 	$str .= '<tbody>';
 
-	if ($username === '')
-	{
+	if ($username === '') {
 		$members_limit = users_desc_lim($limit_from, $limit_to);
 
-		foreach ($members_limit as $member)
-		{
+		foreach ($members_limit as $member) {
 			$str .= view_member($member);
 		}
-	}
-	else
-	{
+	} else {
 		$str .= search_result($username);
 	}
 
@@ -134,10 +124,8 @@ function search_result($username): string
 
 	$str = '';
 
-	if ($users)
-	{
-		foreach ($users as $user)
-		{
+	if ($users) {
+		foreach ($users as $user) {
 			$str .= view_member($user);
 		}
 	}
@@ -169,7 +157,7 @@ function paginate(): string
 {
 	$page = substr(input_get('page', 0), 0, 3);
 
-	$limit_to   = 5;
+	$limit_to = 5;
 	$limit_from = $limit_to * $page;
 
 	$members = users_desc();
@@ -180,10 +168,8 @@ function paginate(): string
 
 	$str = '<div style="float:right; margin-top:30px;">';
 
-	if ($total > ($limit_from + $limit_to))
-	{
-		if ((int) $page !== (int) $last_page)
-		{
+	if ($total > ($limit_from + $limit_to)) {
+		if ((int) $page !== (int) $last_page) {
 			$str .= '<a href="' . sef(40) . qs() . 'page=' . ($last_page) .
 				'" class="uk-button uk-button-primary">Oldest</a>';
 		}
@@ -192,13 +178,11 @@ function paginate(): string
 			'" class="uk-button uk-button-danger">Previous</a>';
 	}
 
-	if ($page > 0 && $page)
-	{
+	if ($page > 0 && $page) {
 		$str .= '<a href="' . sef(40) . qs() . 'page=' . ($page - 1) .
 			'" class="uk-button uk-button-primary">Next</a>';
 
-		if ((int) $page !== 1)
-		{
+		if ((int) $page !== 1) {
 			$str .= '<a href="' . sef(40) . qs() . 'page=' . (1) .
 				'" class="uk-button uk-button-danger">Latest</a>';
 		}
@@ -219,7 +203,7 @@ function header(): string
 {
 	$page = substr(input_get('page', 0), 0, 3);
 
-	$limit_to   = 5;
+	$limit_to = 5;
 	$limit_from = $limit_to * $page;
 
 	$members = users_desc();
@@ -367,17 +351,16 @@ function harvest_append($member): string
 	$account_rd = settings('entry')->{$member->account_type .
 		'_package_name'} . ($user_cd ? ' CD' : '');
 
-	if (!empty(user_harvest($member->id, 'basic')) ||
-		!empty(user_harvest($member->id, 'associate')))
-	{
-		if (!empty(user_harvest($member->id, 'basic')))
-		{
+	if (
+		!empty(user_harvest($member->id, 'basic')) ||
+		!empty(user_harvest($member->id, 'associate'))
+	) {
+		if (!empty(user_harvest($member->id, 'basic'))) {
 			$account_rd .= ' + <a href="' . sef(23) . qs() .
 				'uid=' . $member->id . '">(Bronze Harvest)</a>';
 		}
 
-		if (!empty(user_harvest($member->id, 'associate')))
-		{
+		if (!empty(user_harvest($member->id, 'associate'))) {
 			$account_rd .= ' + <a href="' . sef(22) . qs() .
 				'uid=' . $member->id . '">(Silver Harvest)</a>';
 		}
@@ -398,7 +381,7 @@ function view_member($member): string
 	$usertype = session_get('usertype');
 
 	$settings_ancillaries = settings('ancillaries');
-	$settings_plans       = settings('plans');
+	$settings_plans = settings('plans');
 
 	$account_type = $member->account_type;
 
@@ -422,12 +405,19 @@ function view_member($member): string
 	$str .= ($settings_plans->royalty ? ('<td>' .
 		settings('royalty')->{$member->rank . '_rank_name'} . '</td>') : "\n");
 	$str .= '<td>' . number_format($member->payout_transfer, 8) . '</td>';
-	$str .= ($settings_plans->binary_pair && $user_binary && $psv ?
-		('<td>' . $user_binary->ctr_left . '</td>' . '<td>' .
-			$user_binary->ctr_right . '</td>') : ('<td>N/A</td>' . '<td>N/A</td>'));
+	if (
+		$settings_plans->binary_pair &&
+		binary_all()
+	) {
+		$str .= '<td>' . $user_binary->ctr_left . '</td>';
+		$str .= '<td>' . $user_binary->ctr_right . '</td>';
+	}
 
-	if ($usertype === 'Admin')
-	{
+	// $str .= ($settings_plans->binary_pair && $user_binary && $psv ?
+	// 	('<td>' . $user_binary->ctr_left . '</td>' . '<td>' .
+	// 		$user_binary->ctr_right . '</td>') : ('<td>N/A</td>' . '<td>N/A</td>'));
+
+	if ($usertype === 'Admin') {
 		$str .= '<td>';
 		$str .= '<div class="uk-button-group">';
 		$str .= '<button class="uk-button uk-button-primary">Select</button>';
@@ -442,7 +432,7 @@ function view_member($member): string
 		$str .= '</li>';
 		$str .= $payment_mode === 'CODE' && $settings_ancillaries->cd_mode === 'cd' ?
 			('<li>' . (!$user_cd ? '<a href="' . sef(11) . qs() . 'uid=' . $member->id . '">CD</a>' :
-					'<a href="' . sef(108) . qs() . 'uid=' . $member->id . '">UnCD</a>') . '</li>') : '';
+				'<a href="' . sef(108) . qs() . 'uid=' . $member->id . '">UnCD</a>') . '</li>') : '';
 		$str .= '</ul>';
 		$str .= '</div>';
 		$str .= '</div>';

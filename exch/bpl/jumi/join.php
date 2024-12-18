@@ -46,18 +46,12 @@ function main()
 
 	session_set('edit', false);
 
-	if (input_get('username') === '')
-	{
-		try
-		{
+	if (input_get('username') === '') {
+		try {
 			$str .= view_form();
+		} catch (Exception $e) {
 		}
-		catch (Exception $e)
-		{
-		}
-	}
-	else
-	{
+	} else {
 		process_form();
 	}
 
@@ -145,8 +139,8 @@ function view_logo(): string
 
 	$str = '<div style="background-color: transparent; text-align: center; padding: 5px">' .
 		(!1 ? $logo1 : $logo2) . /*('<a href="../">
-            <img src="' . $img . '" class="img-responsive" style="padding: 5px; margin-left: 33px" alt="">
-        </a>') .*/
+<img src="' . $img . '" class="img-responsive" style="padding: 5px; margin-left: 33px" alt="">
+</a>') .*/
 		'</div>';
 
 	$str .= identicon_js();
@@ -171,13 +165,13 @@ function view_form(): string
 	$usertype = session_get('usertype');
 
 	$admintype = session_get('admintype');
-	$sid       = input_get('s');
+	$sid = input_get('s');
 
 	$s_username = session_get('s_username');
-	$s_email    = session_get('s_email');
+	$s_email = session_get('s_email');
 	$s_password = session_get('s_password');
-	$s_sponsor  = session_get('s_sponsor');
-	$edit       = session_get('edit');
+	$s_sponsor = session_get('s_sponsor');
+	$edit = session_get('edit');
 
 	$sponsor = sponsor();
 
@@ -228,26 +222,28 @@ function view_form(): string
                            required></td>
             </tr>';
 
-//	$str .= '<tr>
-//                <td><label for="sponsor">Sponsor Username: *</label></td>
-//                <td><input type="text"
-//                           name="sponsor"
-//                           id="sponsor"
-//                           size="40"
-//                           value="' . ($s_sponsor && !isset($sponsor) ? $s_sponsor : $sponsor) . '"
-//                           required="required"';
-//	$str .= ($sid !== '' ? ' readonly' : '');
-//	$str .= ' style="float:left"><a href="javascript:void(0)" onClick="checkInput(\'sponsor\')"
-// class="uk-button uk-button-primary" style="float:left">Verify</a>
-//	    <div style="width:200px; height:20px; font-weight:bold; float:left; padding:7px 0 0 10px;"
-//	         id="sponsorDiv"></div>
-//	    </td>
-//	    </tr>';
+	if (settings('plans')->direct_referral) {
+		$str .= '<tr>
+               <td><label for="sponsor">Sponsor Username: *</label></td>
+               <td><input type="text"
+                          name="sponsor"
+                          id="sponsor"
+                          size="40"
+                          value="' . ($s_sponsor && !isset($sponsor) ? $s_sponsor : $sponsor) . '"
+                          required="required"';
+		$str .= ($sid !== '' ? ' readonly' : '');
+		$str .= ' style="float:left"><a href="javascript:void(0)" onClick="checkInput(\'sponsor\')"
+class="uk-button uk-button-primary" style="float:left">Verify</a>
+	    <div style="width:200px; height:20px; font-weight:bold; float:left; padding:7px 0 0 10px;"
+	         id="sponsorDiv"></div>
+	    </td>
+	    </tr>';
+	}
 
 	$str .= (($edit && $admintype === 'Super') ? '<tr>
             <td><label for="date">Date Registered:</label></td>
             <td><input type="text" name="date" value="' /*.
-            date('Y - m - d G:i', $s_date == '' ? 0 : $s_date)*/
+date('Y - m - d G:i', $s_date == '' ? 0 : $s_date)*/
 		. '" id="date"
                        size="40"></td>
         </tr>' : '');
@@ -290,6 +286,7 @@ function view_form(): string
  * @param $password1
  * @param $password2
  * @param $code
+ * @param $sponsor
  * @param $admintype
  * @param $edit
  *
@@ -300,77 +297,68 @@ function validate_input(
 	$password1,
 	$password2,
 	$code,
-//	$sponsor,
+	$sponsor,
 	$admintype,
 	$edit
-)
-{
-//	$settings_plans = settings('plans');
-//	$settings_ancillaries = settings('ancillaries');
+) {
+	$settings_plans = settings('plans');
+	$settings_ancillaries = settings('ancillaries');
 
-	$payment_mode = settings('ancillaries')->payment_mode;
+	$payment_mode = $settings_ancillaries->payment_mode;
 
-	if ($edit && $admintype === 'Super')
-	{
+	if ($edit && $admintype === 'Super') {
 		$date = input_get('date', '', 'RAW');
 	}
 
 	$app = application();
 
-//	$user_sponsor = user_username($sponsor);
-
-	if ($username === '')
-	{
+	if ($username === '') {
 		$err = 'Please specify your Username.<br>';
 		$app->redirect(Uri::root(true) . '/' . sef(144), $err, 'error');
 	}
 
-	if ($password1 === '')
-	{
+	if ($password1 === '') {
 		$err = 'Please specify your Password.<br>';
 		$app->redirect(Uri::root(true) . '/' . sef(144), $err, 'error');
 	}
 
-	if ($password2 === '')
-	{
+	if ($password2 === '') {
 		$err = 'Please specify your Password confirmation.<br>';
 		$app->redirect(Uri::root(true) . '/' . sef(144), $err, 'error');
 	}
 
-//	if ($sponsor === '')
-//	{
-//		$err = 'Please specify your Sponsor Username.<br>';
-//		$app->redirect(Uri::root(true) . '/' . sef(144), $err, 'error');
-//	}
-
-	if ($edit && !isset($date))
-	{
+	if ($edit && !isset($date)) {
 		$err = 'Please specify your Registration Date.<br>';
 		$app->redirect(Uri::root(true) . '/' . sef(144), $err, 'error');
 	}
 
-	if (count(user_username_unblock($username)))
-	{
+	if (count(user_username_unblock($username))) {
 		$err = 'Username already taken.<br>';
 		$app->redirect(Uri::root(true) . '/' . sef(144), $err, 'error');
 	}
 
-	if ($payment_mode === 'CODE' && $code === '')
-	{
+	if ($payment_mode === 'CODE' && $code === '') {
 		$err = 'Please specify your Registration Code.<br>';
 		$app->redirect(Uri::root(true) . '/' . sef(144), $err, 'error');
 	}
 
-//	if (empty($user_sponsor) || (empty(user_username_active($sponsor))))
-//	{
-//		$err = 'Invalid Sponsor Username!<br>';
-//		$app->redirect(Uri::root(true) . '/' . sef(144), $err, 'error');
-//	}
-
-	if ($password1 !== $password2)
-	{
+	if ($password1 !== $password2) {
 		$err = 'Your Passwords do not match!<br>';
 		$app->redirect(Uri::root(true) . '/' . sef(144), $err, 'error');
+	}
+
+	if ($settings_plans->direct_referral) {
+		$user_sponsor = user_username($sponsor);
+
+		if ($sponsor === '') {
+			$err = 'Please specify your Sponsor Username.<br>';
+			$app->redirect(Uri::root(true) . '/' . sef(144), $err, 'error');
+		}
+
+		if (empty($user_sponsor) || (empty(user_username_active($sponsor)))) {
+			$err = 'Invalid Sponsor Username!<br>';
+			$app->redirect(Uri::root(true) . '/' . sef(144), $err, 'error');
+		}
 	}
 }
 
@@ -382,14 +370,14 @@ function process_form()
 	echo display_loader();
 
 	$admintype = session_get('admintype');
-	$edit      = session_get('edit');
+	$edit = session_get('edit');
 
-	$username  = input_get('username');
+	$username = input_get('username');
 	$password1 = input_get('password1');
 	$password2 = input_get('password2');
-	$code      = input_get('code');
-//	$sponsor   = input_get('sponsor');
-	$email     = input_get('email', '', 'RAW');
+	$code = input_get('code');
+	$sponsor = input_get('sponsor');
+	$email = input_get('email', '', 'RAW');
 
 	$app = application();
 
@@ -403,25 +391,22 @@ function process_form()
 	session_set('s_username', $username);
 	session_set('s_email', $email);
 	session_set('s_password', $password1);
-//	session_set('s_sponsor', $sponsor);
+	//	session_set('s_sponsor', $sponsor);
 
 	validate_input(
 		$username,
 		$password1,
 		$password2,
 		$code,
-//		$sponsor,
+		$sponsor,
 		$admintype,
 		$edit
 	);
 
-	if (insert_user($username, $password1, 'admin', $email, $admintype, $edit))
-	{
+	if (insert_user($username, $password1, $sponsor, $email, $admintype, $edit)) {
 		$app->redirect(Uri::root(true) . '/' . sef(144), $username .
 			' has joined successfully!', 'success');
-	}
-	else
-	{
+	} else {
 		$app->redirect(Uri::root(true) . '/' . sef(144), 'Something went wrong!', 'error');
 	}
 }
@@ -449,13 +434,14 @@ function insert_user($username, $password, $sponsor, $email, $admintype, $edit)
 	$date = input_get_date($admintype, $edit);
 
 	// sponsor
-	$sponsor_id = '';
+	$sponsor_id = '1';
 
-	$user_sponsor = user_username($sponsor);
+	if (settings('plans')->direct_referral) {
+		$user_sponsor = user_username($sponsor);
 
-	if (!empty($user_sponsor))
-	{
-		$sponsor_id = $user_sponsor[0]->id;
+		if (!empty($user_sponsor)) {
+			$sponsor_id = $user_sponsor[0]->id;
+		}
 	}
 
 	$columns_user_insert = [
@@ -469,12 +455,9 @@ function insert_user($username, $password, $sponsor, $email, $admintype, $edit)
 
 	$date_registered = ($edit && isset($date) ? $db->quote($date) : $db->quote(time()));
 
-	if ($payment_mode === 'CODE')
-	{
+	if ($payment_mode === 'CODE') {
 		$date_activated = $date_registered;
-	}
-	else
-	{
+	} else {
 		$date_activated = ($edit && (int) $date !== 0 ? $db->quote($date) : $db->quote(0));
 	}
 
@@ -487,10 +470,9 @@ function insert_user($username, $password, $sponsor, $email, $admintype, $edit)
 		$db->quote($email)
 	];
 
-	if ($payment_mode === 'ECASH')
-	{
+	if ($payment_mode === 'ECASH') {
 		$columns_user_insert[] = 'account_type';
-		$values_user_insert[]  = $db->quote('starter');
+		$values_user_insert[] = $db->quote('starter');
 	}
 
 	return insert(
@@ -513,8 +495,7 @@ function code_type($code): string
 
 	$code_user = code_user($code);
 
-	if ($code_user)
-	{
+	if ($code_user) {
 		$code_type = $code_user[0]->type;
 	}
 
@@ -536,7 +517,7 @@ function code_user($code)
 		'SELECT * ' .
 		'FROM network_codes ' .
 		'WHERE code = ' . $db->quote($code)/* .
-		' AND user_id = ' . $db->quote($insert_id)*/
+' AND user_id = ' . $db->quote($insert_id)*/
 	)->loadObjectList();
 }
 
@@ -554,14 +535,13 @@ function log_registration_activity($insert_id, $code_type, $username, $sponsor)
 	$db = db();
 
 	// sponsor
-	$sponsor_id   = '';
+	$sponsor_id = '';
 	$sponsor_name = '';
 
 	$user_sponsor = user_username($sponsor);
 
-	if (!empty($user_sponsor))
-	{
-		$sponsor_id   = $user_sponsor[0]->id;
+	if (!empty($user_sponsor)) {
+		$sponsor_id = $user_sponsor[0]->id;
 		$sponsor_name = $user_sponsor[0]->username;
 	}
 
@@ -605,14 +585,13 @@ function log_registration_transactions($insert_id, $code_type, $username, $spons
 	$entry = settings('entry')->{$code_type . '_entry'};
 
 	// sponsor
-	$sponsor_id   = '';
+	$sponsor_id = '';
 	$sponsor_name = '';
 
 	$user_sponsor = user_username($sponsor);
 
-	if (!empty($user_sponsor))
-	{
-		$sponsor_id   = $user_sponsor[0]->id;
+	if (!empty($user_sponsor)) {
+		$sponsor_id = $user_sponsor[0]->id;
 		$sponsor_name = $user_sponsor[0]->username;
 	}
 
@@ -697,17 +676,14 @@ function js(): string
  */
 function sponsor(): string
 {
-	$sid     = input_get('s');
+	$sid = input_get('s');
 	$user_id = session_get('user_id');
 
 	$sponsor = '';
 
-	if ($sid !== '')
-	{
+	if ($sid !== '') {
 		$sponsor = $sid;
-	}
-	elseif ($user_id !== '')
-	{
+	} elseif ($user_id !== '') {
 		$sponsor = user($user_id)->username ?? '';
 	}
 
@@ -783,8 +759,7 @@ function input_get_date($admintype, $edit): string
 {
 	$date = time();
 
-	if ($edit && $admintype === 'Super')
-	{
+	if ($edit && $admintype === 'Super') {
 		$date = input_get('date', 0, 'RAW');
 	}
 
@@ -802,8 +777,7 @@ function session_set_date($admintype, $edit)
 {
 	$date = input_get_date($admintype, $edit);
 
-	if ($edit && $admintype === 'Super' && (int) $date !== 0)
-	{
+	if ($edit && $admintype === 'Super' && (int) $date !== 0) {
 		session_set('s_date', $date);
 	}
 }
