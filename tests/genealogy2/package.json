@@ -1,0 +1,14 @@
+{
+  "name": "@bumbeishvili/vertical-collapsible-d3-flextree",
+  "main": "175413ee0c6c1e37@192.js",
+  "version": "192.0.0",
+  "homepage": "https://observablehq.com/@bumbeishvili/vertical-collapsible-d3-flextree",
+  "author": {
+    "name": "David  B.",
+    "url": "https://observablehq.com/@bumbeishvili"
+  },
+  "type": "module",
+  "peerDependencies": {
+    "@observablehq/runtime": "4 - 5"
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "id": "14724626",
+  "name": "Jeffrey",
+  "path": null,
+  "level": 1,
+  "birthDate": "19610315",
+  "hasDocument": 1,
+  "isProminentFigure": 0,
+  "motherUpdated": false,
+  "hasAddRights": true,
+  "ord1": 1,
+  "collapsed": false,
+  "maxGenerations": 10,
+  "nodes": [
+    {
+      "id": "1472457A",
+      "name": "Jay",
+      "path": null,
+      "level": 2,
+      "birthDate": "19270922",
+      "hasDocument": 1,
+      "isProminentFigure": 0,
+      "fatherUpdated": false,
+      "motherUpdated": false,
+      "hasAddRights": false,
+      "ord1": 3,
+      "collapsed": false,
+      "maxGenerations": null,
+      "nodes": null
+    },
+    {
+      "id": "14724588",
+      "name": "Florence",
+      "path": null,
+      "level": 2,
+      "birthDate": "19280504",
+      "hasDocument": 1,
+      "isProminentFigure": 0,
+      "fatherUpdated": false,
+      "motherUpdated": false,
+      "hasAddRights": false,
+      "ord1": 2,
+      "collapsed": false,
+      "maxGenerations": null,
+      "nodes": null
+    }
+  ]
+}

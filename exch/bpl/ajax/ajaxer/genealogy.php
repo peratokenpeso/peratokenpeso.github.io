@@ -259,11 +259,12 @@ function genealogy($plan): string
 	    dynamic.nodeChildCountTopMargin = attrs.nodePadding + 14 + dynamic.nodeImageHeight / 4 * 3;
 	
 	    var tree = d3.layout.tree().nodeSize([attrs.nodeWidth + 40, attrs.nodeHeight]);
-        var diagonal = function(d) {
-            return "M" + (d.source.x + attrs.nodeWidth / 2) + "," + (d.source.y + attrs.nodeHeight)
-                + "L" + (d.target.x + attrs.nodeWidth / 2) + "," + (d.target.y);
-        };
-        var zoomBehaviours = d3.behavior
+	    var diagonal = d3.svg.diagonal()
+	        .projection(function (d) {
+	            debugger;
+	            return [d.x + attrs.nodeWidth / 2, d.y + attrs.nodeHeight / 2];
+	        });
+	    var zoomBehaviours = d3.behavior
 	        .zoom()
 	        .scaleExtent(attrs.minMaxZoomProportions)
 	        .on("zoom", redraw);
@@ -434,21 +435,35 @@ function genealogy($plan): string
 	                    x: source.x0,
 	                    y: source.y0
 	                };
-	                return diagonal({ source: o, target: o });
+	
+	                return diagonal({
+	                    source: o,
+	                    target: o
+	                });
 	            });
 	
+	        // Transition links to their new position.
 	        link.transition()
 	            .duration(attrs.duration)
 	            .attr("d", diagonal);
 	
+	        // Transition exiting nodes to the parent\'s new position.
 	        link.exit().transition()
 	            .duration(attrs.duration)
-	            .attr("d", function (d) {
-	                var o = { x: source.x, y: source.y };
-	                return diagonal({ source: o, target: o });
+	            .attr("d", function () {
+	                var o = {
+	                    x: source.x,
+	                    y: source.y
+	                };
+	
+	                return diagonal({
+	                    source: o,
+	                    target: o
+	                });
 	            })
 	            .remove();
 	
+	        // Stash the old positions for transition.
 	        nodes.forEach(function (d) {
 	            d.x0 = d.x;
 	            d.y0 = d.y;
@@ -456,6 +471,7 @@ function genealogy($plan): string
 	
 	        var x = 0;
 	        var y = 0;
+	
 	        if (param && param.locate) {
 	            nodes.forEach(function (d) {
 	                if (d.uniqueIdentifier === param.locate) {
@@ -464,9 +480,11 @@ function genealogy($plan): string
 	                }
 	            });
 	
+	            // normalize for width/height
 	            new_x = window.innerWidth / 2 - x;
 	            new_y = window.innerHeight / 2 - y;
 	
+	            // move the main container g
 	            svg.attr("transform", "translate(" + new_x + "," + new_y + ")");
 	            zoomBehaviours.translate([new_x, new_y]);
 	            zoomBehaviours.scale(1);
@@ -480,15 +498,18 @@ function genealogy($plan): string
 	                }
 	            });
 	
+	            // normalize for width/height
 	            var new_x = window.innerWidth / 2 - x;
 	            var new_y = window.innerHeight / 2 - y;
 	
+	            // move the main container g
 	            svg.attr("transform", "translate(" + new_x + "," + new_y + ")");
 	            zoomBehaviours.translate([new_x, new_y]);
 	            zoomBehaviours.scale(1);
 	        }
 	    }
 	
+	    // Toggle children on click.
 	    function click(d) {
 	        d3.select(this).select("text").text(function (dv) {
 	            if (dv.collapseText === attrs.EXPAND_SYMBOL) {
@@ -498,6 +519,7 @@ function genealogy($plan): string
 	                    dv.collapseText = attrs.EXPAND_SYMBOL
 	                }
 	            }
+	
 	            return dv.collapseText;
 	        });
 	
@@ -508,13 +530,18 @@ function genealogy($plan): string
 	            d.children = d._children;
 	            d._children = null;
 	        }
+	
 	        update(d);
 	    }
 	
+	    //########################################################
+	
+	    //Redraw for zoom
 	    function redraw() {
 	        svg.attr("transform", "translate(" + d3.event.translate + ")" + " scale(" + d3.event.scale + ")");
 	    }
 	
+	    // #############################   Function Area #######################
 	    function wrap(text, width) {
 	        text.each(function () {
 	            var text = d3.select(this),
@@ -522,7 +549,7 @@ function genealogy($plan): string
 	                word,
 	                line = [],
 	                lineNumber = 0,
-	                lineHeight = 1.1,
+	                lineHeight = 1.1, // ems
 	                x = text.attr("x"),
 	                y = text.attr("y"),
 	                dy = 0,
@@ -531,9 +558,11 @@ function genealogy($plan): string
 	                    .attr("x", x)
 	                    .attr("y", y)
 	                    .attr("dy", dy + "em");
+	
 	            while (word = words.pop()) {
 	                line.push(word);
 	                tspan.text(line.join(" "));
+	
 	                if (tspan.node().getComputedTextLength() > width) {
 	                    line.pop();
 	                    tspan.text(line.join(" "));
@@ -550,47 +579,77 @@ function genealogy($plan): string
 	
 	    function addPropertyRecursive(propertyName, propertyValueFunction, element) {
 	        if (element[propertyName]) {
-	            element[propertyName] = element[propertyName] + " " + propertyValueFunction(element);
+	            element[propertyName] = element[propertyName] + \' \' + propertyValueFunction(element);
 	        } else {
 	            element[propertyName] = propertyValueFunction(element);
 	        }
+	
 	        if (element.children) {
 	            element.children.forEach(function (v) {
-	                addPropertyRecursive(propertyName, propertyValueFunction, v);
-	            });
+	                addPropertyRecursive(propertyName, propertyValueFunction, v)
+	            })
 	        }
+	
 	        if (element._children) {
 	            element._children.forEach(function (v) {
-	                addPropertyRecursive(propertyName, propertyValueFunction, v);
-	            });
+	                addPropertyRecursive(propertyName, propertyValueFunction, v)
+	            })
 	        }
 	    }
+	
+	    function getEmployeesCount(node) {
+	        var count = 1;
+	
+	        countChilds(node);
+	
+	        return count;
+	
+	        function countChilds(node) {
+	            var childs = node.children ? node.children : node._children;
+	
+	            if (childs) {
+	                childs.forEach(function (v) {
+	                    count++;
+	                    countChilds(v);
+	                })
+	            }
+	        }
+	    }
+	
 	    function expand(d) {
 	        if (d.children) {
 	            d.children.forEach(expand);
 	        }
+	
 	        if (d._children) {
 	            d.children = d._children;
 	            d.children.forEach(expand);
 	            d._children = null;
 	        }
+	
 	        if (d.children) {
+	            // if node has children and it\'s expanded, then  display -
 	            setToggleSymbol(d, attrs.COLLAPSE_SYMBOL);
 	        }
 	    }
+	
 	    function collapse(d) {
 	        if (d._children) {
 	            d._children.forEach(collapse);
 	        }
+	
 	        if (d.children) {
 	            d._children = d.children;
 	            d._children.forEach(collapse);
 	            d.children = null;
 	        }
+	
 	        if (d._children) {
+	            // if node has children and it\'s collapsed, then  display +
 	            setToggleSymbol(d, attrs.EXPAND_SYMBOL);
 	        }
 	    }
+	
 	    function setCollapsibleSymbolProperty(d) {
 	        if (d._children) {
 	            d.collapseText = attrs.EXPAND_SYMBOL;
@@ -598,13 +657,17 @@ function genealogy($plan): string
 	            d.collapseText = attrs.COLLAPSE_SYMBOL;
 	        }
 	    }
+	
 	    function setToggleSymbol(d, symbol) {
 	        d.collapseText = symbol;
-	        d3.select("*[data-id=\\"" + d.uniqueIdentifier + "\\"]").select("text").text(symbol);
+	        d3.select("*[data-id=\"" + d.uniqueIdentifier + "\"]").select("text").text(symbol);
 	    }
+	
+	    /* expand current nodes collapsed parents */
 	    function expandParents(d) {
 	        while (d.parent) {
 	            d = d.parent;
+	
 	            if (!d.children) {
 	                d.children = d._children;
 	                d._children = null;
@@ -612,10 +675,46 @@ function genealogy($plan): string
 	            }
 	        }
 	    }
+	
+	    function show(selectors) {
+	        display(selectors, "initial")
+	    }
+	
+	    function hide(selectors) {
+	        display(selectors, "none")
+	    }
+	
+	    function display(selectors, displayProp) {
+	        selectors.forEach(function (selector) {
+	            var elements = getAll(selector);
+	
+	            elements.forEach(function (element) {
+	                element.style.display = displayProp;
+	            })
+	        });
+	    }
+	
+	    function set(selector, value) {
+	        var elements = getAll(selector);
+	
+	        elements.forEach(function (element) {
+	            element.innerHTML = value;
+	            element.value = value;
+	        })
+	    }
+	
+	    function clear(selector) {
+	        set(selector, "");
+	    }
+	
+	    function get(selector) {
+	        return document.querySelector(selector);
+	    }
+	
 	    function getAll(selector) {
 	        return document.querySelectorAll(selector);
 	    }
-	}
+	}';
 }
 
 /**
