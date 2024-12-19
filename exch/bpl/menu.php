@@ -108,6 +108,7 @@ function home_admin($admintype): string
                     </div>
                 </div>
             </div>';
+
 	// home: end
 
 	return $str;
@@ -284,7 +285,7 @@ function buy_package($account_type): string
 	return ($account_type === 'starter' &&
 		settings('ancillaries')->payment_mode === 'ECASH' ?
 		'<div class="uk-button-group" style="display: block; width: 100%; margin-bottom: 10px;">
-            <a href="' . sef(10) . '" class="uk-button" style="width: 93%;">Merchant</a></div>' : '');
+            <a href="' . sef(10) . '" class="uk-button" style="width: 93%;">Buy Account</a></div>' : '');
 	// buy pack: end
 }
 
@@ -454,31 +455,32 @@ function loan_admin($admintype): string
  *
  * @since version
  */
-function efund_member($user_id): string
+function efund_member(): string
 {
 	$sa = settings('ancillaries');
-	$efund_name = $sa->efund_name;
-
-	$account_type = user($user_id)->account_type;
+	//	$efund_name = $sa->efund_name;
 
 	$str = '<div class="uk-button-group" style="display: block; width: 100%; margin-bottom: 10px;">
         <button class="uk-button" style="width: 80%;">' . /*$efund_name*/
-		'eCash' . '</button>
+		'Funding' . '</button>
         <div class="" data-uk-dropdown="{mode:\'click\'}">
             <button class="uk-button"><i class="uk-icon-caret-down"></i></button>
             <div style="" class="uk-dropdown uk-dropdown-small">
                 <ul class="uk-nav uk-nav-dropdown">';
-	//	$str .= '<li><a href="' . sef(16) . '">' . $efund_name . ' Transfer</a></li>';
-	$str .= '<li><a href="' . sef(73) . '">Request eCash ' . /*$efund_name .*/ '</a></li>';
-	$str .= '<li><a href="' . sef(74) . '">' . /*$efund_name .*/ 'eCash Transactions</a></li>';
-	//	$str .= '<li><a href="' . sef(75) . '">Request ' . $efund_name . ' Log</a></li>';
-
-	if ($account_type !== 'starter') {
-		$str .= '<li><a href="' . sef(57) . '">Withdraw ' . $efund_name . '</a></li>';
-		$str .= '<li><a href="' . sef(59) . '">' . $efund_name . ' Withdrawal History</a></li>';
-		$str .= '<li><a href="' . sef(122) . '">' . $efund_name . ' Conversion Logs</a></li>';
-	}
-
+	$str .= '<li><a href="' . sef(16) . '">' . /*$efund_name .*/
+		' Transfer Funds</a></li>';
+	$str .= '<li><a href="' . sef(73) . '">Request Funds ' . /*$efund_name .*/
+		'</a></li>';
+	$str .= '<li><a href="' . sef(74) . '">' . /*$efund_name .*/
+		'Funds Transactions</a></li>';
+	$str .= '<li><a href="' . sef(75) . '">Request ' . /*$efund_name .*/
+		' Logs</a></li>';
+	$str .= '<li><a href="' . sef(57) . '">Convert Funds ' . /*$efund_name .*/
+		'</a></li>';
+	$str .= '<li><a href="' . sef(59) . '">' . /*$efund_name .*/
+		' Conversion History</a></li>';
+	$str .= '<li><a href="' . sef(122) . '">' . /*$efund_name .*/
+		' Conversion Logs</a></li>';
 	$str .= '</ul>
             </div>
         </div>
@@ -715,6 +717,10 @@ function shop_admin($account_type): string
                         <li><a href="' . sef(64) . '">Redeem Tokens</a></li>
                         <li><a href="' . sef(133) . '">Transfer Tokens</a></li>
                         <li><a href="' . sef(132) . '">Add Tokens</a></li>
+                        <li><a href="' . sef(145) . '">Convert Tokens</a></li>
+                        <li><a href="' . sef(146) . '">Pending Convert Tokens</a></li>
+                        <li><a href="' . sef(147) . '">Confirmed Convert Tokens</a></li>
+                        <li><a href="' . sef(148) . '">Logs Convert Tokens</a></li>
                         <li><a href="' . sef(69) . '">Shoppe Items</a></li>
                         <li><a href="' . sef(50) . '">Token Items</a></li>
                         <li><a href="' . sef(123) . '">Merchants</a></li>
@@ -735,30 +741,40 @@ function shop_admin($account_type): string
  */
 function shop_member($account_type): string
 {
-	$settings_plans = settings('plans');
-	$settings_unilevel = settings('unilevel');
+	$sp = settings('plans');
+	$su = settings('unilevel');
 
-	return (($account_type !== 'starter' &&
-		(($settings_plans->unilevel &&
-			$settings_unilevel->{$account_type . '_unilevel_level'} > 0) ||
-			$settings_plans->redundant_binary)) ?
-		'<div class="uk-button-group" style="display: block; width: 100%; margin-bottom: 10px;">
-            <button class="uk-button" style="width: 80%;">ShoppeClub</button>
-            <div class="" data-uk-dropdown="{mode:\'click\'}">
-                <button class="uk-button"><i class="uk-icon-caret-down"></i></button>
-                <div style="" class="uk-dropdown uk-dropdown-small">
-                    <ul class="uk-nav uk-nav-dropdown">
-                        <li><a href="' . sef(9) . '">Buy Items</a></li>
-                        <li><a href="' . sef(64) . '">Redeem Tokens</a></li>
-                        <li><a href="' . sef(133) . '">Transfer Tokens</a></li>
-                        <li><a href="' . sef(72) . '">Purchased History</a></li>
-                        <li><a href="' . sef(53) . '">Token Redemption List</a>
-                        <li><a href="' . sef(123) . '">Merchants</a></li>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-        </div>' : '');
+	$str = '';
+
+	if (
+		$account_type !== 'starter'
+		&& (($sp->unilevel
+			&& $su->{$account_type . '_unilevel_level'} > 0)
+			|| $sp->redundant_binary)
+	) {
+		$str .= '<div class="uk-button-group" style="display: block; width: 100%; margin-bottom: 10px;">';
+		$str .= '<button class="uk-button" style="width: 80%;">TKN</button>';
+		$str .= '<div class="" data-uk-dropdown="{mode:\'click\'}">';
+		$str .= '<button class="uk-button"><i class="uk-icon-caret-down"></i></button>';
+		$str .= '<div style="" class="uk-dropdown uk-dropdown-small">';
+		$str .= '<ul class="uk-nav uk-nav-dropdown">';
+		//		$str .= '<li><a href="' . sef(9) . '">Buy Items</a></li>';
+		$str .= '<li><a href="' . sef(64) . '">Swap Tokens</a></li>';
+		$str .= '<li><a href="' . sef(133) . '">Transfer Tokens</a></li>';
+		$str .= '<li><a href="' . sef(145) . '">Convert Tokens</a></li>';
+		$str .= '<li><a href="' . sef(147) . '">Convert Tokens History</a></li>';
+		$str .= '<li><a href="' . sef(148) . '">Convert Tokens Log</a></li>';
+		//		$str .= '<li><a href="' . sef(72) . '">Purchased History</a></li>';
+		$str .= '<li><a href="' . sef(53) . '">Token Swap List</a></li>';
+		//		$str .= '<li><a href="' . sef(123) . '">Merchants</a></li>';
+		$str .= '</li>';
+		$str .= '</ul>';
+		$str .= '</div>';
+		$str .= '</div>';
+		$str .= '</div>';
+	}
+
+	return $str;
 }
 
 /**
@@ -1479,8 +1495,8 @@ function trader_member($account_type): string
  */
 function admin($admintype, $account_type, $user_id, $username): string
 {
-	$logo = 'images/logo_responsive.png'
-		/*'https://picsum.photos/300/100'*/ ;
+	$logo = 'images/logo_responsive.png'/*'https://picsum.photos/300/100'*/
+	;
 
 	$logo1 = '<svg data-jdenticon-value="' . ($username . \BPL\Mods\Helpers\time()) . '" width="80" height="80"></svg>';
 
@@ -1520,18 +1536,21 @@ function admin($admintype, $account_type, $user_id, $username): string
 
 	//	$str .= core($account_type, $user_id);
 
-	//	$str .= affiliates($account_type, $user_id);
+	$str .= affiliates($account_type, $user_id);
 
 	$str .= trader_admin();
 	$str .= p2p_trading();
 	$str .= p2p_commerce();
 
-	//	$str .= $admintype === 'Super' ? cron_menu() : '';
+	$str .= $admintype === 'Super' ? cron_menu() : '';
 
 	$str .= '<div class="uk-button-group" style="display: block; width: 100%; margin-bottom: 10px;"><a href="' . sef(44) .
 		'" class="uk-button" style="width: 93%;">' . /*($admintype === 'Super' ? 'Super' : $username)*/
 		'Details' . '</a></div>';
+	// $str .= '<div class="uk-button-group" style="display: block; width: 100%; margin-bottom: 10px;">
+	// 			<a href="site.html" class="uk-button" style="width: 93%;">Homepage</a></div>';
 	$str .= logout();
+
 	$str .= '</div>';
 	$str .= '</div>'; // uk-grid center: end
 	$str .= '</div>'; // navbar-fixed-top: end
@@ -1556,7 +1575,7 @@ function admin($admintype, $account_type, $user_id, $username): string
 function hamburger(): string
 {
 	return '<button class="hamburger-button" id="hamburgerButton">
-            &#9776; Dashboard
+            &#9776; Menu
          </button>';
 }
 
@@ -1772,8 +1791,8 @@ function member($account_type, $username, $user_id): string
 	$sa = settings('ancillaries');
 	$efund_name = $sa->efund_name;
 
-	$logo = 'images/logo_responsive.png'
-		/*'https://picsum.photos/300/100'*/ ;
+	$logo = 'images/logo_responsive.png'/*'https://picsum.photos/300/100'*/
+	;
 
 	$logo1 = '<svg data-jdenticon-value="' . ($username . \BPL\Mods\Helpers\time()) . '" width="80" height="80"></svg>';
 
@@ -1792,7 +1811,11 @@ function member($account_type, $username, $user_id): string
 	//	$str .= home_member();
 	$str .= '<div class="uk-button-group"  style="display: block; width: 100%; margin-bottom: 10px;"><a href="' .
 		sef(44) . '" class="uk-button" style="width: 93%;">' . /*$username*/
-		'Profile' . '</a></div>';
+		'Account Info' . '</a></div>';
+	$str .= $account_type === 'starter' ? ''
+		: '<div class="uk-button-group"  style="display: block; width: 100%; margin-bottom: 10px;"><a href="' .
+		sef(2) . '" class="uk-button" style="width: 93%;">' . /*$username*/
+		'Dashboard' . '</a></div>';
 	$str .= '<div class="uk-button-group"  style="display: block; width: 100%; margin-bottom: 10px;"><a href="' .
 		sef(settings('ancillaries')->payment_mode === 'CODE' ? 65
 			: 144) . '" class="uk-button" style="width: 93%;">' . /*$username*/
@@ -1800,8 +1823,8 @@ function member($account_type, $username, $user_id): string
 	//	$str .= signup_member($account_type);
 //	$str .= codes();
 	$str .= buy_package($account_type);
-	$str .= $account_type !== 'starter' ? wallet_member($account_type) : '';
-	$str .= $account_type !== 'starter' ? token_member($account_type) : '';
+	$str .= $account_type === 'starter' ? '' : wallet_member($account_type);
+	$str .= $account_type === 'starter' ? '' : token_member($account_type);
 	$str .= shop_member($account_type);
 	//	$str .= account_member();
 
@@ -1811,7 +1834,9 @@ function member($account_type, $username, $user_id): string
 	$str .= p2p_trading();
 	$str .= p2p_commerce();
 
-	$str .= /*$account_type !== 'starter' ?*/ efund_member($user_id) /*: ''*/ ;
+	$str .= /*$account_type !== 'starter' ?*/
+		efund_member() /*: ''*/
+	;
 
 	//	$str .= $account_type !== 'starter' ? '' :
 //		'<div class="uk-button-group" style="display: block; width: 100%; margin-bottom: 10px;"><a href="' . sef(73) .
@@ -1824,7 +1849,10 @@ function member($account_type, $username, $user_id): string
 //		<a href="https://coinbrain.com/converter/bnb-0x4a0bfc65feb6f477e3944906fb09652d2d8b5f0d/usd"
 //		class="uk-button">Buy GOLD</a></div>';
 
-	//	$str .= $account_type !== 'starter' ? affiliates($account_type, $user_id) : '';
+	$str .= /*$account_type === 'starter' ? '' : */ affiliates($account_type, $user_id);
+
+	// $str .= '<div class="uk-button-group" style="display: block; width: 100%; margin-bottom: 10px;">
+	// 			<a href="site.html" class="uk-button" style="width: 93%;">Homepage</a></div>';
 
 	$str .= logout();
 	$str .= '</div>';
@@ -1897,8 +1925,8 @@ function affiliates($account_type, $user_id): string
 
 	// unilevel
 	if (
-		$account_type !== 'starter'
-		&& (
+			/*$account_type !== 'starter'
+				  &&*/ (
 			$sp->unilevel
 			&& $sul->{$account_type . '_unilevel_level'} > 0
 			&& !empty(user_unilevel($user_id))
@@ -1915,8 +1943,8 @@ function affiliates($account_type, $user_id): string
 
 	//binary
 	if (
-		$account_type !== 'starter'
-		&& ($sp->binary_pair || $sp->redundant_binary)
+			/*$account_type !== 'starter'
+				  &&*/ ($sp->binary_pair || $sp->redundant_binary)
 	) {
 		$str .= $first ? '<li class="uk-nav-divider"></li>' : '';
 		$first = !$first ? 1 : $first;
@@ -1929,8 +1957,8 @@ function affiliates($account_type, $user_id): string
 
 	// leadership binary
 	if (
-		$account_type !== 'starter'
-		&& $sp->binary_pair
+		/*$account_type !== 'starter'
+			  &&*/ $sp->binary_pair
 		&& $sp->leadership_binary
 		&& $slb->{$account_type . '_leadership_level'} > 0
 	) {
@@ -1945,8 +1973,8 @@ function affiliates($account_type, $user_id): string
 
 	// leadership passive
 	if (
-		$account_type !== 'starter'
-		&& (
+			/*$account_type !== 'starter'
+				  &&*/ (
 			$sp->leadership_passive
 			&& $slp->{$account_type . '_leadership_passive_level'} > 0
 			&& (
@@ -1986,7 +2014,7 @@ function affiliates($account_type, $user_id): string
 		&& !$se->executive_entry
 		&& !$se->regular_entry
 		&& !$se->associate_entry
-		&& $account_type !== 'starter'
+		//		&& $account_type !== 'starter'
 	) {
 		$str .= $first ? '<li class="uk-nav-divider"></li>' : '';
 		$first = !$first ? 1 : $first;
@@ -2017,7 +2045,7 @@ function affiliates($account_type, $user_id): string
 			|| $sp->top_up
 			|| $sp->fixed_daily
 			|| $sp->fast_track
-		) && $account_type !== 'starter'
+		) /*&& $account_type !== 'starter'*/
 	) {
 		$str .= $first ? '<li class="uk-nav-divider"></li>' : '';
 
@@ -2036,6 +2064,20 @@ function affiliates($account_type, $user_id): string
 	$str .= '</div>';
 	$str .= '</div>';
 	$str .= '</div>';
+
+	$str .= '<style>
+		/* Reduce space between li tags */
+		.uk-nav-dropdown li {
+		    margin: 0; /* Adjust margin as needed */
+		    padding: 0; /* Adjust padding as needed */
+		}
+		
+		/* Set the width of the dropdown to match the sidebar */
+		.uk-dropdown {
+		    width: 100%; /* Set to 100% to match the container */
+		    box-sizing: border-box; /* Ensures padding is included in the element\'s total width */
+		}
+	</style>';
 
 	return $str;
 }

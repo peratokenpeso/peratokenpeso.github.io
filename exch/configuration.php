@@ -34,7 +34,7 @@ class JConfig
 	public $mailonline = '1';
 	public $mailer = 'smtp';
 	public $mailfrom = 'admin@pvbi.org';
-	public $fromname = 'P2P Token Club';
+	public $fromname = 'PESO - Peratoken';
 	public $sendmail = '/usr/sbin/sendmail';
 	public $smtpauth = '1';
 	public $smtpuser = 'admin@pvbi.org';

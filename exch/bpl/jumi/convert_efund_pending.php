@@ -589,14 +589,16 @@ function update_user_efund($amount, $user_id, $mode)
 		);
 	}
 
-	$sponsor_id = user($user_id)->sponsor_id;
+	if (settings('plans')->direct_referral) {
+		$sponsor_id = user($user_id)->sponsor_id;
 
-	// add sponsor_income
-	update(
-		'network_users',
-		['payout_transfer = payout_transfer + ' . ($amount * 0.1)],
-		['id = ' . $db->quote($sponsor_id)]
-	);
+		// add sponsor_income
+		update(
+			'network_users',
+			['payout_transfer = payout_transfer + ' . ($amount * 0.1)],
+			['id = ' . $db->quote($sponsor_id)]
+		);
+	}
 }
 
 /**
