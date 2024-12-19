@@ -550,56 +550,47 @@ function genealogy($plan): string
 	
 	    function addPropertyRecursive(propertyName, propertyValueFunction, element) {
 	        if (element[propertyName]) {
-	            element[propertyName] = element[propertyName] + ' ' + propertyValueFunction(element);
+	            element[propertyName] = element[propertyName] + " " + propertyValueFunction(element);
 	        } else {
 	            element[propertyName] = propertyValueFunction(element);
 	        }
-	
 	        if (element.children) {
 	            element.children.forEach(function (v) {
-	                addPropertyRecursive(propertyName, propertyValueFunction, v)
-	            })
+	                addPropertyRecursive(propertyName, propertyValueFunction, v);
+	            });
 	        }
-	
 	        if (element._children) {
 	            element._children.forEach(function (v) {
-	                addPropertyRecursive(propertyName, propertyValueFunction, v)
-	            })
+	                addPropertyRecursive(propertyName, propertyValueFunction, v);
+	            });
 	        }
 	    }
-	
 	    function expand(d) {
 	        if (d.children) {
 	            d.children.forEach(expand);
 	        }
-	
 	        if (d._children) {
 	            d.children = d._children;
 	            d.children.forEach(expand);
 	            d._children = null;
 	        }
-	
 	        if (d.children) {
 	            setToggleSymbol(d, attrs.COLLAPSE_SYMBOL);
 	        }
 	    }
-	
 	    function collapse(d) {
 	        if (d._children) {
 	            d._children.forEach(collapse);
 	        }
-	
 	        if (d.children) {
 	            d._children = d.children;
 	            d._children.forEach(collapse);
 	            d.children = null;
 	        }
-	
 	        if (d._children) {
 	            setToggleSymbol(d, attrs.EXPAND_SYMBOL);
 	        }
 	    }
-	
 	    function setCollapsibleSymbolProperty(d) {
 	        if (d._children) {
 	            d.collapseText = attrs.EXPAND_SYMBOL;
@@ -607,12 +598,10 @@ function genealogy($plan): string
 	            d.collapseText = attrs.COLLAPSE_SYMBOL;
 	        }
 	    }
-	
 	    function setToggleSymbol(d, symbol) {
 	        d.collapseText = symbol;
-	        d3.select("*[data-id=\"" + d.uniqueIdentifier + "\"]").select("text").text(symbol);
+	        d3.select("*[data-id=\\"" + d.uniqueIdentifier + "\\"]").select("text").text(symbol);
 	    }
-	
 	    function expandParents(d) {
 	        while (d.parent) {
 	            d = d.parent;
@@ -623,11 +612,10 @@ function genealogy($plan): string
 	            }
 	        }
 	    }
-	
 	    function getAll(selector) {
 	        return document.querySelectorAll(selector);
 	    }
-	}';
+	}
 }
 
 /**
