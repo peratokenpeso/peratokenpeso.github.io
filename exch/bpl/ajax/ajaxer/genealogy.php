@@ -18,25 +18,79 @@ use function BPL\Mods\Helpers\db;
  */
 function main($type, $user_id, string $plan = 'binary_pair'): string
 {
-	$dir_font = 'bpl/plugins/orgchart/assets/css/font-awesome.min.css';
-	$dir_style = 'bpl/plugins/orgchart/assets/css/style.css';
-	$dir_d3 = 'bpl/plugins/orgchart/assets/js/d3.min.js';
+	// $dir_font = 'bpl/plugins/orgchart/assets/css/font-awesome.min.css';
+	// $dir_style = 'bpl/plugins/orgchart/assets/css/style.css';
+	// $dir_d3 = 'bpl/plugins/orgchart/assets/js/d3.min.js';
 
-	$str = '<link rel="stylesheet" href="' . $dir_font . '">';
-	$str .= '<link rel=\'stylesheet prefetch\' href=\'https://fonts.googleapis.com/css?family=Roboto\'>';
-	$str .= '<link rel="stylesheet" href="' . $dir_style . '">';
+	// $str = '<link rel="stylesheet" href="' . $dir_font . '">';
+	$str = '<link rel=\'stylesheet prefetch\' href=\'https://fonts.googleapis.com/css?family=Roboto\'>';
+	// $str .= '<link rel="stylesheet" href="' . $dir_style . '">';
 	$str .= '<style>
-    	#genealogy_' . $type . ' {
-            cursor: move;
-            height: 100%;
-            width: 100%;
-            background-color: transparent;
-            border: 1px dashed #C3CCE8;
-            margin: 0;
-        };
-	</style>';
+			:root {
+				--color-primary: steelblue;
+				--color-secondary: #ccc;
+				--color-background: #fff;
+				--color-tooltip-bg: rgba(0, 0, 0, 0.7);
+				--color-tooltip-text: #fff;
+			
+				--font-size-base: 0.75rem;
+				/* 12px */
+				--font-family-base: system-ui, -apple-system, sans-serif;
+			
+				--spacing-sm: 0.3125rem;
+				/* 5px */
+				--spacing-md: 0.625rem;
+				/* 10px */
+			
+				--border-radius: 0.3125rem;
+				/* 5px */
+				--stroke-width-large: 3px;
+				--stroke-width-small: 2px;
+			
+				--transition-default: 200ms ease;
+			}
+
+			#genealogy_' . $type . ' {
+				width: 100%;
+    			height: 100%;
+			};
+
+			/* Node styles */
+			.node circle {
+				fill: var(--color-background);
+				stroke: var(--color-primary);
+				stroke-width: var(--stroke-width-large);
+			}
+
+			.node text {
+				font: var(--font-size-base) var(--font-family-base);
+			}
+
+			/* Connection line styles */
+			.link {
+				fill: none;
+				stroke: var(--color-secondary);
+				stroke-width: var(--stroke-width-small);
+			}
+
+			/* Tooltip */
+			.tooltip {
+				position: absolute;
+				padding: var(--spacing-sm) var(--spacing-md);
+				background-color: var(--color-tooltip-bg);
+				color: var(--color-tooltip-text);
+				border-radius: var(--border-radius);
+				font-size: var(--font-size-base);
+				font-family: var(--font-family-base);
+				pointer-events: none;
+				opacity: 0;
+				transition: opacity var(--transition-default);
+			}
+		</style>';
 	$str .= '<div id="genealogy_' . $type . '"></div>';
-	$str .= '<script src="' . $dir_d3 . '"></script>';
+	$str .= '<div class="tooltip" id="tooltip"></div>';
+	// $str .= '<script src="' . $dir_d3 . '"></script>';
+	$str .= '<script src="https://d3js.org/d3.v7.min.js"></script>';
 	$str .= '<script>' . render($type, $user_id, $plan) . '</script>';
 
 	return $str;
@@ -63,105 +117,105 @@ function plan_attr(): array
 	];
 }
 
-/**
- * @param $plan
- *
- * @return string
- *
- * @since version
- */
-function details($plan): string
-{
-	$attr = set_attr($plan);
+// /**
+//  * @param $plan
+//  *
+//  * @return string
+//  *
+//  * @since version
+//  */
+// function details($plan): string
+// {
+// 	$attr = set_attr($plan);
 
-	$img = $plan !== 'binary_pair' ? '"active.png"' :
-		'(d.caption === "Y" || d.caption === "X" ? "active.png" : "inactive.png")';
-	$usr = $plan !== 'binary_pair' ? '"emp-name"' :
-		'(d.caption === "Y" || d.caption === "X" ? "emp-name" : "inactive-binary")';
+// 	$img = $plan !== 'binary_pair' ? '"active.png"' :
+// 		'(d.caption === "Y" || d.caption === "X" ? "active.png" : "inactive.png")';
+// 	$usr = $plan !== 'binary_pair' ? '"emp-name"' :
+// 		'(d.caption === "Y" || d.caption === "X" ? "emp-name" : "inactive-binary")';
 
-	$str = 'nodeGroup.append("text")
-	            .attr("x", dynamic.nodeTextLeftMargin)
-	            .attr("y", attrs.nodePadding + 10)
-	            .attr("class", function (d) {
-	                return ' . $usr . ';
-	            })
-	            .attr("text-anchor", "left")
-	            .text(function (d) {
-	                return d.username.trim();
-	            })
-	            .call(wrap, attrs.nodeWidth);' . "\n\n";
+// 	$str = 'nodeGroup.append("text")
+// 	            .attr("x", dynamic.nodeTextLeftMargin)
+// 	            .attr("y", attrs.nodePadding + 10)
+// 	            .attr("class", function (d) {
+// 	                return ' . $usr . ';
+// 	            })
+// 	            .attr("text-anchor", "left")
+// 	            .text(function (d) {
+// 	                return d.username.trim();
+// 	            })
+// 	            .call(wrap, attrs.nodeWidth);' . "\n\n";
 
-	$str .= 'nodeGroup.append("text")
-	            .attr("x", dynamic.nodeTextLeftMargin)
-	            .attr("y", dynamic.nodePositionNameTopMargin)
-	            .attr("class", "emp-position-name")
-	            .attr("dy", ".15em")
-	            .attr("text-anchor", "left")	           
-	            .text(function (d) {	
-	                return d.account;
-	            });' . "\n\n";
+// 	$str .= 'nodeGroup.append("text")
+// 	            .attr("x", dynamic.nodeTextLeftMargin)
+// 	            .attr("y", dynamic.nodePositionNameTopMargin)
+// 	            .attr("class", "emp-position-name")
+// 	            .attr("dy", ".15em")
+// 	            .attr("text-anchor", "left")	           
+// 	            .text(function (d) {	
+// 	                return d.account;
+// 	            });' . "\n\n";
 
-	$str .= 'nodeGroup.append("text")
-            .attr("x", dynamic.nodeTextLeftMargin)
-            .attr("y", attrs.nodePadding + 10 + dynamic.nodeImageHeight / 4 * 2)
-            .attr("class", "emp-position-name")
-            .attr("dy", "0.05em")
-            .attr("text-anchor", "left")
+// 	$str .= 'nodeGroup.append("text")
+//             .attr("x", dynamic.nodeTextLeftMargin)
+//             .attr("y", attrs.nodePadding + 10 + dynamic.nodeImageHeight / 4 * 2)
+//             .attr("class", "emp-position-name")
+//             .attr("dy", "0.05em")
+//             .attr("text-anchor", "left")
 
-            .text(function (d) {               
-                return d.' . $attr . ';
-            });' . "\n\n";
+//             .text(function (d) {               
+//                 return d.' . $attr . ';
+//             });' . "\n\n";
 
-	$str .= $plan !== 'binary_pair' ? '' : 'nodeGroup.append("text")
-	            .attr("x", dynamic.nodeTextLeftMargin)
-	            .attr("y", dynamic.nodeChildCountTopMargin)
-	            .attr("class", function (d) {
-	                return ' . $usr . ';
-	            })
-	            .attr("dy", "-0.2em")
-	            .attr("text-anchor", "left")
-	
-	            .text(function (d) {
-	                switch(d.caption) {
-	                    case "Y":
-	                        return "Active";
-	                    break;
-	                    case "X":
-	                        return "Reactivated";
-	                    break;
-	                    case "Z":
-	                        return "Maxed Out";
-	                    break;
-	                    default:
-	                        return "Inactive";
-	                    break;
-	                }	               
-	            });' . "\n\n";
+// 	$str .= $plan !== 'binary_pair' ? '' : 'nodeGroup.append("text")
+// 	            .attr("x", dynamic.nodeTextLeftMargin)
+// 	            .attr("y", dynamic.nodeChildCountTopMargin)
+// 	            .attr("class", function (d) {
+// 	                return ' . $usr . ';
+// 	            })
+// 	            .attr("dy", "-0.2em")
+// 	            .attr("text-anchor", "left")
 
-	$str .= 'nodeGroup.append("defs").append("svg:clipPath")
-	            .attr("id", "clip")
-	            .append("svg:rect")
-	            .attr("id", "clip-rect")
-	            .attr("rx", 3)
-	            .attr("x", attrs.nodePadding)
-	            .attr("y", 2 + attrs.nodePadding)
-	            .attr("width", dynamic.nodeImageWidth)
-	            .attr("fill", "none")
-	            .attr("height", dynamic.nodeImageHeight - 4);' . "\n\n";
+// 	            .text(function (d) {
+// 	                switch(d.caption) {
+// 	                    case "Y":
+// 	                        return "Active";
+// 	                    break;
+// 	                    case "X":
+// 	                        return "Reactivated";
+// 	                    break;
+// 	                    case "Z":
+// 	                        return "Maxed Out";
+// 	                    break;
+// 	                    default:
+// 	                        return "Inactive";
+// 	                    break;
+// 	                }	               
+// 	            });' . "\n\n";
 
-	$str .= 'nodeGroup.append("svg:image")
-	            .attr("y", 2 + attrs.nodePadding)
-	            .attr("x", attrs.nodePadding)
-	            .attr("preserveAspectRatio", "yes")
-	            .attr("width", dynamic.nodeImageWidth)
-	            .attr("height", dynamic.nodeImageHeight - 4)
-	            .attr("clip-path", "url(#clip)")
-	            .attr("xlink:href", function (d) {
-	                return params.imageUrl + ' . $img . ';
-	            });' . "\n\n";
+// 	$str .= 'nodeGroup.append("defs").append("svg:clipPath")
+// 	            .attr("id", "clip")
+// 	            .append("svg:rect")
+// 	            .attr("id", "clip-rect")
+// 	            .attr("rx", 3)
+// 	            .attr("x", attrs.nodePadding)
+// 	            .attr("y", 2 + attrs.nodePadding)
+// 	            .attr("width", dynamic.nodeImageWidth)
+// 	            .attr("fill", "none")
+// 	            .attr("height", dynamic.nodeImageHeight - 4);' . "\n\n";
 
-	return $str;
-}
+// 	$str .= 'nodeGroup.append("svg:image")
+// 	            .attr("y", 2 + attrs.nodePadding)
+// 	            .attr("x", attrs.nodePadding)
+// 	            .attr("preserveAspectRatio", "yes")
+// 	            .attr("width", dynamic.nodeImageWidth)
+// 	            .attr("height", dynamic.nodeImageHeight - 4)
+// 	            .attr("clip-path", "url(#clip)")
+// 	            .attr("xlink:href", function (d) {
+// 	                return params.imageUrl + ' . $img . ';
+// 	            });' . "\n\n";
+
+// 	return $str;
+// }
 
 /**
  * @param           $type
@@ -175,28 +229,18 @@ function details($plan): string
 function ajax($type, $user_id, string $plan = 'binary_pair'): string
 {
 	return 'jQuery.ajax({
-	    type: "post",
-	    dataType: "json",
-	    url: "bpl/ajax/action.php",
-	    data: {
-	        "action": "genealogy_' . $type . '",
-	        "id_user": ' . $user_id . ',
-	        "plan": "' . $plan . '"
-	    },
-	    success: function (data) {
-	        params = {
-	            selector: "#genealogy_' . $type . '",
-	            imageUrl: "bpl/plugins/orgchart/assets/img/",
-	            profileUrl: "' . sef(44) . '",
-	            chartWidth: window.innerWidth,
-	            chartHeight: window.innerHeight,
-	            data: data,
-	            pristinaData: JSON.parse(JSON.stringify(data))
-	        };
-	
-	        drawOrganizationChart(params);
-	    }
-	});';
+			type: "post",
+			dataType: "json",
+			url: "bpl/ajax/action.php",
+			data: {
+				"action": "genealogy_' . $type . '",
+				"id_user": ' . $user_id . ',
+				"plan": "' . $plan . '"
+			},
+			success: function (data) {
+				const treeVis = new TreeVisualization("#genealogy_' . $type . '", data);
+			}
+		});';
 }
 
 /**
@@ -210,511 +254,388 @@ function ajax($type, $user_id, string $plan = 'binary_pair'): string
  */
 function render($type, $user_id, $plan): string
 {
-	$str = 'var params = {};';
+	$attr = set_attr($plan);
+	// $str = 'var params = {};';
+	$str = '
+			/**
+			 * Type definition for a node in the tree structure.
+			 * Each node can have a name, optional details, and optional child nodes.
+			 * @typedef {Object} TreeNode
+			 * @property {string} name - Display name of the node
+			 * @property {Object} [details] - Optional metadata about the node
+			 * @property {string} details.id - Unique identifier
+			 * @property {string} details.account - Account information
+			 * @property {number} details.balance - Account balance
+			 * @property {string} details.plan - Subscription plan type
+			 * @property {number} details.bonus_indirect_referral - Bonus amount
+			 * @property {TreeNode[]} [children] - Array of child nodes
+			*/
+		
+			/**
+			 * Global configuration object for customizing the tree visualization.
+			 * Contains settings for margins, node appearance, animations, and link styling.
+			 * @constant {Object}
+			*/
+			const CONFIG = {
+				margin: {
+					top: 20,     // Top margin in pixels
+					right: 90,   // Right margin in pixels
+					bottom: 30,  // Bottom margin in pixels
+					left: 90     // Left margin in pixels
+				},
+				nodeRadius: 10,              // Radius of node circles in pixels
+				transitionDuration: 200,     // Duration of animations in milliseconds
+				linkStyle: {
+					strokeWidth: 2,          // Width of connecting lines
+					strokeColor: "#ccc"      // Color of connecting lines
+				}
+			};
+		
+			/**
+			 * Class representing an interactive tree visualization using D3.js
+			 * Features include:
+			 * - Collapsible nodes
+			 * - Interactive zooming
+			 * - Tooltips with node details
+			 * - Smooth transitions
+			 * - Automatic layout
+			*/
+			class TreeVisualization {
+				/**
+				 * Creates a new tree visualization instance
+				 * @param {string} containerId - ID of the DOM element to contain the tree
+				 * @param {TreeNode} data - Hierarchical data structure for the tree
+				*/
+				constructor(containerId, data) {
+					this.i = 0;  // Counter for generating unique node IDs
+					this.container = d3.select(containerId);
+		
+					// Calculate dimensions based on margins
+					this.width = 960 - CONFIG.margin.left - CONFIG.margin.right;
+					this.height = 500 - CONFIG.margin.top - CONFIG.margin.bottom;
+			
+					// Select tooltip container
+					this.tooltip = d3.select("#tooltip");
+			
+					this.initializeSVG();
+					this.initializeTree(data);
+					this.setupZoom();
+				}
+		
+				/**
+				 * Sets up the SVG container and adds basic structural elements
+				 * Includes a border and transformation group for zooming
+				 * @private
+				*/
+				initializeSVG() {
+				// Create main SVG container with specified dimensions
+				this.svg = this.container.append("svg")
+					.attr("width", this.width + CONFIG.margin.left + CONFIG.margin.right)
+					.attr("height", this.height + CONFIG.margin.top + CONFIG.margin.bottom)
+					.style("display", "block")
+					.style("margin", "auto");
+		
+				// Create group for zoom transformations
+				this.zoomGroup = this.svg.append("g")
+					.attr("transform", `translate(${CONFIG.margin.left},${CONFIG.margin.top})`);
+		
+				this.addBorder();
+			}
+		
+			/**
+			 * Adds a dashed border around the visualization
+			 * @private
+			*/
+			addBorder() {
+				this.svg.append("rect")
+					.attr("width", this.svg.attr("width"))
+					.attr("height", this.svg.attr("height"))
+					.attr("fill", "none")
+					.attr("stroke", CONFIG.linkStyle.strokeColor)
+					.attr("stroke-width", CONFIG.linkStyle.strokeWidth)
+					.attr("stroke-dasharray", "5,5");
+			}
+		
+			/**
+			 * Initializes zoom behavior with scale limits and event handling
+			 * @private
+			*/
+			setupZoom() {
+				const zoom = d3.zoom()
+					.scaleExtent([0.5, 2])  // Limit zoom scale between 0.5x and 2x
+					.on("zoom", ({ transform }) => {
+						this.zoomGroup.attr("transform", transform);
+					});
+		
+				this.svg.call(zoom);
+			}
+		
+			/**
+			 * Sets up the initial tree structure and collapses all nodes
+			 * @param {TreeNode} data - Root node of the tree
+			 * @private
+			*/
+			initializeTree(data) {
+				// Create D3 tree layout
+				this.tree = d3.tree().size([this.width, this.height]);
+		
+				// Create hierarchy from data
+				this.root = d3.hierarchy(data, d => d.children);
+		
+				// Set initial position at center-top
+				this.root.x0 = this.width / 2;
+				this.root.y0 = 0;
+		
+				// Collapse all nodes initially
+				if (this.root.children) {
+					this.root.children.forEach(this.collapse);
+				}
+		
+				this.update(this.root);
+			}
+		
+			/**
+			 * Recursively collapses all children of a node
+			 * @param {d3.HierarchyNode} node - Node to collapse
+			 * @private
+			*/
+			collapse = (node) => {
+				if (node.children) {
+					node._children = node.children;  // Store children in _children
+					node._children.forEach(this.collapse);
+					node.children = null;  // Remove children to collapse
+				}
+			}
+		
+			/**
+			 * Generates SVG path data for connecting lines between nodes
+			 * Uses curved lines with control points
+			 * @param {Object} source - Starting point coordinates
+			 * @param {Object} target - Ending point coordinates
+			 * @returns {string} SVG path data
+			 * @private
+			*/
+			diagonal(source, target) {
+				return `M ${source.x} ${source.y}
+						C ${source.x} ${(source.y + target.y) / 2},
+						${target.x} ${(source.y + target.y) / 2},
+						${target.x} ${target.y}`;
+			}
+		
+			/**
+			 * Updates the visualization when node states change
+			 * Handles node positions, transitions, and link updates
+			 * @param {d3.HierarchyNode} source - Node that triggered the update
+			 * @public
+			*/
+			update(source) {
+				const treeData = this.tree(this.root);
+				const nodes = treeData.descendants();
+				const links = treeData.descendants().slice(1);
+		
+				// Normalize for fixed-depth
+				nodes.forEach(node => {
+					node.y = node.depth * 120;  // Vertical spacing between levels
+				});
+		
+				this.updateNodes(nodes, source);
+				this.updateLinks(links, source);
+		
+				// Store the old positions for transitions
+				nodes.forEach(node => {
+					node.x0 = node.x;
+					node.y0 = node.y;
+				});
+			}
+		
+			/**
+			 * Handles the enter/update/exit cycle for nodes
+			 * @param {d3.HierarchyNode[]} nodes - Array of tree nodes
+			 * @param {d3.HierarchyNode} source - Source node for transitions
+			 * @private
+			*/
+			updateNodes(nodes, source) {
+				const node = this.zoomGroup.selectAll("g.node")
+					.data(nodes, d => d.id || (d.id = ++this.i));
+		
+				const nodeEnter = this.createNodes(node, source);
+				this.updateExistingNodes(nodeEnter, node);
+				this.removeNodes(node, source);
+			}
+		
+			/**
+			 * Creates new nodes in the visualization
+			 * @param {d3.Selection} node - D3 selection of nodes
+			 * @param {d3.HierarchyNode} source - Source node for transitions
+			 * @returns {d3.Selection} New node elements
+			 * @private
+			*/
+			createNodes(node, source) {
+				const nodeEnter = node.enter().append("g")
+					.attr("class", "node")
+					.attr("transform", () => `translate(${source.x0},${source.y0})`)
+					.on("click", (_event, d) => this.handleClick(d))
+					.on("mouseover", (_event, d) => this.handleMouseOver(d))
+					.on("mousemove", (event) => this.handleMouseMove(event))
+					.on("mouseout", () => this.handleMouseOut());
+		
+				// Add circles for nodes
+				nodeEnter.append("circle")
+					.attr("class", "node")
+					.attr("r", 1e-6)
+					.style("fill", d => d._children ? "lightsteelblue" : "#fff");
+		
+				// Add labels for nodes
+				nodeEnter.append("text")
+					.attr("dy", ".35em")
+					.attr("x", d => d.children || d._children ? -13 : 13)
+					.attr("text-anchor", d => d.children || d._children ? "end" : "start")
+					.text(d => d.data.username);
+		
+				return nodeEnter;
+			}
+		
+			/**
+			 * Updates existing nodes with new positions and states
+			 * @param {d3.Selection} nodeEnter - Enter selection of new nodes
+			 * @param {d3.Selection} node - Update selection of existing nodes
+			 * @private
+			*/
+			updateExistingNodes(nodeEnter, node) {
+				const nodeUpdate = nodeEnter.merge(node);
+		
+				// Transition nodes to their new positions
+				nodeUpdate.transition()
+					.duration(CONFIG.transitionDuration)
+					.attr("transform", d => `translate(${d.x},${d.y})`);
+		
+				nodeUpdate.select("circle.node")
+					.attr("r", CONFIG.nodeRadius)
+					.style("fill", d => d._children ? "lightsteelblue" : "#fff")
+					.attr("cursor", "pointer");
+			}
+		
+			/**
+			 * Handles the removal of nodes from the visualization
+			 * @param {d3.Selection} node - D3 selection of nodes to remove
+			 * @param {d3.HierarchyNode} source - Source node for transitions
+			 * @private
+			*/
+			removeNodes(node, source) {
+				const nodeExit = node.exit().transition()
+					.duration(CONFIG.transitionDuration)
+					.attr("transform", () => `translate(${source.x},${source.y})`)
+					.remove();
+		
+				nodeExit.select("circle")
+					.attr("r", 1e-6);
+		
+				nodeExit.select("text")
+					.style("fill-opacity", 1e-6);
+			}
+		
+			/**
+			 * Updates the connecting lines between nodes
+			 * @param {d3.HierarchyNode[]} links - Array of links between nodes
+			 * @param {d3.HierarchyNode} source - Source node for transitions
+			 * @private
+			*/
+			updateLinks(links, source) {
+				const link = this.zoomGroup.selectAll("path.link")
+					.data(links, d => d.id);
+		
+				// Enter any new links at the parent\'s previous position
+				const linkEnter = link.enter().insert("path", "g")
+					.attr("class", "link")
+					.attr("d", () => {
+						const o = { x: source.x0, y: source.y0 };
+						return this.diagonal(o, o);
+					});
+		
+				// Transition links to their new position
+				linkEnter.merge(link)
+					.transition()
+					.duration(CONFIG.transitionDuration)
+					.attr("d", d => this.diagonal(d, d.parent));
+		
+				// Remove any exiting links
+				link.exit().transition()
+					.duration(CONFIG.transitionDuration)
+					.attr("d", () => {
+						const o = { x: source.x, y: source.y };
+						return this.diagonal(o, o);
+					})
+					.remove();
+			}
+		
+			/**
+			 * Handles click events on nodes to toggle expansion/collapse
+			 * @param {d3.HierarchyNode} node - Clicked node
+			 * @private
+			*/
+			handleClick(node) {
+				if (node.children) {
+					node._children = node.children;
+					node.children = null;
+				} else {
+					node.children = node._children;
+					node._children = null;
+				}
+		
+				this.update(node);
+			}
+		
+			/**
+			 * Shows tooltip with node details on mouseover
+			 * @param {d3.HierarchyNode} node - Node being hovered
+			 * @private
+			*/
+			handleMouseOver(node) {
+				this.tooltip
+					.style("opacity", 1)
+					.html(this.generateTooltipContent(node.data.details));
+			}
+		
+			/**
+			 * Generates HTML content for the tooltip
+			 * @param {Object} details - Node details object
+			 * @returns {string} HTML content for tooltip
+			 * @private
+			*/
+			generateTooltipContent(details) {
+				const { id, account, balance, plan, ' . $attr . '} = details;
+				
+				return `
+					<div><strong>ID:</strong> ${id}</div>
+					<div><strong>Account:</strong> ${account}</div>
+					<div><strong>balance:</strong> ${balance}</div>            
+					<div><strong>${plan}:</strong> ${' . $attr . '}</div>
+				`;
+			}
+		
+			/**
+			 * Updates tooltip position on mouse movement
+			 * @param {MouseEvent} event - Mouse move event
+			 * @private
+			*/
+			handleMouseMove(event) {
+				this.tooltip
+					.style("left", `${event.pageX + 10}px`)
+					.style("top", `${event.pageY - 20}px`);
+			}
+		
+			/**
+			 * Hides tooltip when mouse leaves a node
+			 * @private
+			*/
+			handleMouseOut() {
+				this.tooltip.style("opacity", 0);
+			}
+		}';
+
 	$str .= ajax($type, $user_id, $plan);
-	$str .= genealogy($plan);
 
 	return $str;
-}
-
-/**
- * @param $plan
- *
- * @return string
- *
- * @since version
- */
-function genealogy($plan): string
-{
-	return 'function drawOrganizationChart(params) {		
-	    var attrs = {
-	        EXPAND_SYMBOL: "\uf067",
-	        COLLAPSE_SYMBOL: "\uf068",
-	        selector: params.selector,
-	        root: params.data,
-	        width: params.chartWidth,
-	        height: params.chartHeight,
-	        index: 0,
-	        nodePadding: 9,
-	        collapseCircleRadius: 7,
-	        nodeHeight: 80,
-	        nodeWidth: 160,
-	        duration: 750,
-	        rootNodeTopMargin: 20,
-	        minMaxZoomProportions: [0.05, 3],
-	        linkLineSize: 180,
-	        collapsibleFontSize: "10px",
-	        userIcon: "\uf013",
-	        nodeStroke: "#ccc",
-	        nodeStrokeWidth: "1px"
-	    };
-	
-	    var dynamic = {};
-	
-	    dynamic.nodeImageWidth = attrs.nodeHeight * 100 / 140;
-	    dynamic.nodeImageHeight = attrs.nodeHeight - 2 * attrs.nodePadding;
-	    dynamic.nodeTextLeftMargin = attrs.nodePadding * 2 + dynamic.nodeImageWidth;
-	    dynamic.rootNodeLeftMargin = attrs.width / 2;
-	    dynamic.nodePositionNameTopMargin = attrs.nodePadding + 8 + dynamic.nodeImageHeight / 4;
-	    dynamic.nodeChildCountTopMargin = attrs.nodePadding + 14 + dynamic.nodeImageHeight / 4 * 3;
-	
-	    var tree = d3.layout.tree().nodeSize([attrs.nodeWidth + 40, attrs.nodeHeight]);
-	    var diagonal = d3.svg.diagonal()
-	        .projection(function (d) {
-	            debugger;
-	            return [d.x + attrs.nodeWidth / 2, d.y + attrs.nodeHeight / 2];
-	        });
-	    var zoomBehaviours = d3.behavior
-	        .zoom()
-	        .scaleExtent(attrs.minMaxZoomProportions)
-	        .on("zoom", redraw);
-	    var svg = d3.select(attrs.selector)
-	        .append("svg")
-	        .attr("width", attrs.width)
-	        .attr("height", attrs.height)
-	        .call(zoomBehaviours)
-	        .append("g")
-	        .attr("transform", "translate(" + (attrs.width / 2 - 190) + "," + 20 + ")");
-	
-	    //necessary so that zoom knows where to zoom and un-zoom from
-	    zoomBehaviours.translate([dynamic.rootNodeLeftMargin, attrs.rootNodeTopMargin]);
-	
-	    attrs.root.x0 = 0;
-	    attrs.root.y0 = dynamic.rootNodeLeftMargin;
-	
-	    if (params.mode !== "department") {
-	        // adding unique values to each node recursively
-	        var uniq = 1;
-	
-	        addPropertyRecursive("uniqueIdentifier", function () {
-	            return uniq++;
-	        }, attrs.root);
-	    }
-	
-	    expand(attrs.root);
-	
-	    if (attrs.root.children) {
-	        attrs.root.children.forEach(collapse);
-	    }
-	
-	    update(attrs.root);
-	
-	    d3.select(attrs.selector).style("height", attrs.height);
-	
-	    function update(source, param) {
-	        // Compute the new tree layout.
-	        var nodes = tree.nodes(attrs.root)
-	                .reverse(),
-	            links = tree.links(nodes);
-	
-	        // Normalize for fixed-depth.
-	        nodes.forEach(function (d) {
-	            d.y = d.depth * attrs.linkLineSize;
-	        });
-	
-	        // Update the nodes…
-	        var node = svg.selectAll("g.node")
-	            .data(nodes, function (d) {
-	                return d.id || (d.id = ++attrs.index);
-	            });
-	
-	        // Enter any new nodes at the parent\'s previous position.
-	        var nodeEnter = node.enter()
-	            .append("g")
-	            .attr("class", "node")
-	            .attr("transform", function () {
-	                return "translate(" + source.x0 + "," + source.y0 + ")";
-	            });
-	
-	        var nodeGroup = nodeEnter.append("g")
-	            .attr("class", "node-group");
-	
-	        nodeGroup.append("rect")
-	            .attr("width", attrs.nodeWidth)
-	            .attr("height", attrs.nodeHeight)
-	            .attr("data-node-group-id", function (d) {
-	                return d.uniqueIdentifier;
-	            })
-	            .attr("class", function (d) {
-	                var res = "";
-	                if (d.isLoggedUser) res += "nodeRepresentsCurrentUser ";
-	                res += d._children || d.children ? "nodeHasChildren" : "nodeDoesNotHaveChildren";
-	
-	                return res;
-	            });
-	
-	        var collapsiblesWrapper =
-	            nodeEnter.append("g")
-	                .attr("data-id", function (v) {
-	                    return v.uniqueIdentifier;
-	                });
-	
-	        var collapsibles = collapsiblesWrapper.append("circle")
-	            .attr("class", "node-collapse")
-	            .attr("cx", attrs.nodeWidth - attrs.collapseCircleRadius)
-	            .attr("cy", attrs.nodeHeight - 7)
-	            .attr("", setCollapsibleSymbolProperty);
-	
-	        //hide collapse rect when node does not have children
-	        collapsibles.attr("r", function (d) {
-	            if (d.children || d._children) return attrs.collapseCircleRadius;
-	
-	            return 0;
-	        })
-	            .attr("height", attrs.collapseCircleRadius);
-	
-	        collapsiblesWrapper.append("text")
-	            .attr("class", "text-collapse")
-	            .attr("x", attrs.nodeWidth - attrs.collapseCircleRadius)
-	            .attr("y", attrs.nodeHeight - 3)
-	            .attr("width", attrs.collapseCircleRadius)
-	            .attr("height", attrs.collapseCircleRadius)
-	            .style("font-size", attrs.collapsibleFontSize)
-	            .attr("text-anchor", "middle")
-	            .style("font-family", "FontAwesome")
-	            .text(function (d) {
-	                return d.collapseText;
-	            });
-	
-	        collapsiblesWrapper.on("click", click);' .
-
-		details($plan)
-
-		. '// Transition nodes to their new position.
-	        var nodeUpdate = node.transition()
-	            .duration(attrs.duration)
-	            .attr("transform", function (d) {
-	                return "translate(" + d.x + "," + d.y + ")";
-	            });
-	
-	        //todo replace with attrs object
-	        nodeUpdate.select("rect")
-	            .attr("width", attrs.nodeWidth)
-	            .attr("height", attrs.nodeHeight)
-	            .attr("rx", 3)
-	            .attr("stroke", function (d) {
-	                if (param && d.uniqueIdentifier === param.locate) {
-	                    return "#a1ceed";
-	                }
-	
-	                return attrs.nodeStroke;
-	            })
-	            .attr("stroke-width", function (d) {
-	                if (param && d.uniqueIdentifier === param.locate) {
-	                    return 6;
-	                }
-	
-	                return attrs.nodeStrokeWidth
-	            });
-	
-	        // Transition exiting nodes to the parent\'s new position.
-	        var nodeExit = node.exit().transition()
-	            .duration(attrs.duration)
-	            .attr("transform", function () {
-	                return "translate(" + source.x + "," + source.y + ")";
-	            })
-	            .remove();
-	
-	        nodeExit.select("rect")
-	            .attr("width", attrs.nodeWidth)
-	            .attr("height", attrs.nodeHeight);
-	
-	        // Update the links…
-	        var link = svg.selectAll("path.link")
-	            .data(links, function (d) {
-	                return d.target.id;
-	            });
-	
-	        // Enter any new links at the parent\'s previous position.
-	        link.enter().insert("path", "g")
-	            .attr("class", "link")
-	            .attr("x", attrs.nodeWidth / 2)
-	            .attr("y", attrs.nodeHeight / 2)
-	            .attr("d", function () {
-	                var o = {
-	                    x: source.x0,
-	                    y: source.y0
-	                };
-	
-	                return diagonal({
-	                    source: o,
-	                    target: o
-	                });
-	            });
-	
-	        // Transition links to their new position.
-	        link.transition()
-	            .duration(attrs.duration)
-	            .attr("d", diagonal);
-	
-	        // Transition exiting nodes to the parent\'s new position.
-	        link.exit().transition()
-	            .duration(attrs.duration)
-	            .attr("d", function () {
-	                var o = {
-	                    x: source.x,
-	                    y: source.y
-	                };
-	
-	                return diagonal({
-	                    source: o,
-	                    target: o
-	                });
-	            })
-	            .remove();
-	
-	        // Stash the old positions for transition.
-	        nodes.forEach(function (d) {
-	            d.x0 = d.x;
-	            d.y0 = d.y;
-	        });
-	
-	        var x = 0;
-	        var y = 0;
-	
-	        if (param && param.locate) {
-	            nodes.forEach(function (d) {
-	                if (d.uniqueIdentifier === param.locate) {
-	                    x = d.x;
-	                    y = d.y;
-	                }
-	            });
-	
-	            // normalize for width/height
-	            new_x = window.innerWidth / 2 - x;
-	            new_y = window.innerHeight / 2 - y;
-	
-	            // move the main container g
-	            svg.attr("transform", "translate(" + new_x + "," + new_y + ")");
-	            zoomBehaviours.translate([new_x, new_y]);
-	            zoomBehaviours.scale(1);
-	        }
-	
-	        if (param && param.centerMySelf) {
-	            nodes.forEach(function (d) {
-	                if (d.isLoggedUser) {
-	                    x = d.x;
-	                    y = d.y;
-	                }
-	            });
-	
-	            // normalize for width/height
-	            var new_x = window.innerWidth / 2 - x;
-	            var new_y = window.innerHeight / 2 - y;
-	
-	            // move the main container g
-	            svg.attr("transform", "translate(" + new_x + "," + new_y + ")");
-	            zoomBehaviours.translate([new_x, new_y]);
-	            zoomBehaviours.scale(1);
-	        }
-	    }
-	
-	    // Toggle children on click.
-	    function click(d) {
-	        d3.select(this).select("text").text(function (dv) {
-	            if (dv.collapseText === attrs.EXPAND_SYMBOL) {
-	                dv.collapseText = attrs.COLLAPSE_SYMBOL
-	            } else {
-	                if (dv.children) {
-	                    dv.collapseText = attrs.EXPAND_SYMBOL
-	                }
-	            }
-	
-	            return dv.collapseText;
-	        });
-	
-	        if (d.children) {
-	            d._children = d.children;
-	            d.children = null;
-	        } else {
-	            d.children = d._children;
-	            d._children = null;
-	        }
-	
-	        update(d);
-	    }
-	
-	    //########################################################
-	
-	    //Redraw for zoom
-	    function redraw() {
-	        svg.attr("transform", "translate(" + d3.event.translate + ")" + " scale(" + d3.event.scale + ")");
-	    }
-	
-	    // #############################   Function Area #######################
-	    function wrap(text, width) {
-	        text.each(function () {
-	            var text = d3.select(this),
-	                words = text.text().split(/\s+/).reverse(),
-	                word,
-	                line = [],
-	                lineNumber = 0,
-	                lineHeight = 1.1, // ems
-	                x = text.attr("x"),
-	                y = text.attr("y"),
-	                dy = 0,
-	                tspan = text.text(null)
-	                    .append("tspan")
-	                    .attr("x", x)
-	                    .attr("y", y)
-	                    .attr("dy", dy + "em");
-	
-	            while (word = words.pop()) {
-	                line.push(word);
-	                tspan.text(line.join(" "));
-	
-	                if (tspan.node().getComputedTextLength() > width) {
-	                    line.pop();
-	                    tspan.text(line.join(" "));
-	                    line = [word];
-	                    tspan = text.append("tspan")
-	                        .attr("x", x)
-	                        .attr("y", y)
-	                        .attr("dy", ++lineNumber * lineHeight + dy + "em")
-	                        .text(word);
-	                }
-	            }
-	        });
-	    }
-	
-	    function addPropertyRecursive(propertyName, propertyValueFunction, element) {
-	        if (element[propertyName]) {
-	            element[propertyName] = element[propertyName] + \' \' + propertyValueFunction(element);
-	        } else {
-	            element[propertyName] = propertyValueFunction(element);
-	        }
-	
-	        if (element.children) {
-	            element.children.forEach(function (v) {
-	                addPropertyRecursive(propertyName, propertyValueFunction, v)
-	            })
-	        }
-	
-	        if (element._children) {
-	            element._children.forEach(function (v) {
-	                addPropertyRecursive(propertyName, propertyValueFunction, v)
-	            })
-	        }
-	    }
-	
-	    function getEmployeesCount(node) {
-	        var count = 1;
-	
-	        countChilds(node);
-	
-	        return count;
-	
-	        function countChilds(node) {
-	            var childs = node.children ? node.children : node._children;
-	
-	            if (childs) {
-	                childs.forEach(function (v) {
-	                    count++;
-	                    countChilds(v);
-	                })
-	            }
-	        }
-	    }
-	
-	    function expand(d) {
-	        if (d.children) {
-	            d.children.forEach(expand);
-	        }
-	
-	        if (d._children) {
-	            d.children = d._children;
-	            d.children.forEach(expand);
-	            d._children = null;
-	        }
-	
-	        if (d.children) {
-	            // if node has children and it\'s expanded, then  display -
-	            setToggleSymbol(d, attrs.COLLAPSE_SYMBOL);
-	        }
-	    }
-	
-	    function collapse(d) {
-	        if (d._children) {
-	            d._children.forEach(collapse);
-	        }
-	
-	        if (d.children) {
-	            d._children = d.children;
-	            d._children.forEach(collapse);
-	            d.children = null;
-	        }
-	
-	        if (d._children) {
-	            // if node has children and it\'s collapsed, then  display +
-	            setToggleSymbol(d, attrs.EXPAND_SYMBOL);
-	        }
-	    }
-	
-	    function setCollapsibleSymbolProperty(d) {
-	        if (d._children) {
-	            d.collapseText = attrs.EXPAND_SYMBOL;
-	        } else if (d.children) {
-	            d.collapseText = attrs.COLLAPSE_SYMBOL;
-	        }
-	    }
-	
-	    function setToggleSymbol(d, symbol) {
-	        d.collapseText = symbol;
-	        d3.select("*[data-id=\"" + d.uniqueIdentifier + "\"]").select("text").text(symbol);
-	    }
-	
-	    /* expand current nodes collapsed parents */
-	    function expandParents(d) {
-	        while (d.parent) {
-	            d = d.parent;
-	
-	            if (!d.children) {
-	                d.children = d._children;
-	                d._children = null;
-	                setToggleSymbol(d, attrs.COLLAPSE_SYMBOL);
-	            }
-	        }
-	    }
-	
-	    function show(selectors) {
-	        display(selectors, "initial")
-	    }
-	
-	    function hide(selectors) {
-	        display(selectors, "none")
-	    }
-	
-	    function display(selectors, displayProp) {
-	        selectors.forEach(function (selector) {
-	            var elements = getAll(selector);
-	
-	            elements.forEach(function (element) {
-	                element.style.display = displayProp;
-	            })
-	        });
-	    }
-	
-	    function set(selector, value) {
-	        var elements = getAll(selector);
-	
-	        elements.forEach(function (element) {
-	            element.innerHTML = value;
-	            element.value = value;
-	        })
-	    }
-	
-	    function clear(selector) {
-	        set(selector, "");
-	    }
-	
-	    function get(selector) {
-	        return document.querySelector(selector);
-	    }
-	
-	    function getAll(selector) {
-	        return document.querySelectorAll(selector);
-	    }
-	}';
 }
 
 /**
