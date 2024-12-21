@@ -2,10 +2,6 @@
 
 namespace BPL\Ajax\Ajaxer\Genealogy;
 
-require_once 'bpl/mods/helpers.php';
-
-use function BPL\Mods\Helpers\db;
-
 /**
  * @param           $type
  * @param           $user_id
@@ -549,24 +545,4 @@ function set_attr($plan): string
 	}
 
 	return $attr;
-}
-
-/**
- * @param $user_id
- *
- * @return mixed|null
- *
- * @since version
- */
-function user_binary($user_id)
-{
-	$db = db();
-
-	return $db->setQuery(
-		'SELECT * ' .
-		'FROM network_users u ' .
-		'INNER JOIN network_binary b ' .
-		'ON u.id = b.user_id ' .
-		'WHERE user_id = ' . $db->quote($user_id)
-	)->loadObject();
 }
