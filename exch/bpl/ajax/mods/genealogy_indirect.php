@@ -19,14 +19,6 @@ try {
 	echo json_encode(['error' => $e->getMessage()]);
 }
 
-/**
- * Generates a JSON representation of the network tree
- * 
- * @param int $id_user User ID to generate tree for
- * @param string $plan Selected plan type
- * @return string JSON representation of the network tree
- * @throws Exception If invalid parameters provided
- */
 function generateNetworkTree(int $id_user, string $plan): string
 {
 	if (!$id_user || !$plan) {
@@ -42,39 +34,81 @@ function generateNetworkTree(int $id_user, string $plan): string
 	return json_encode(buildTreeData($head, $plan));
 }
 
-/**
- * Builds the tree data structure for a given user
- * 
- * @param object $user User object
- * @param string $plan Plan type
- * @return array Tree data structure
- */
 function buildTreeData(object $user, string $plan): array
 {
-	$data = [
+	// Step 1: Build the parent node
+	$tree = [
 		'username' => $user->username,
 		'details' => buildUserDetails($user, $plan)
 	];
 
-	$children = getChildren($user->id);
+	// Step 2: Get and process direct children
+	$children = getDirectDescendants($user->id);
 
 	if (!empty($children)) {
-		$data['children'] = array_map(
-			fn($child) => buildTreeData($child, $plan),
+		$tree['children'] = array_map(
+			function ($child) use ($plan) {
+				$childNode = [
+					'username' => $child->username,
+					'details' => buildUserDetails($child, $plan)
+				];
+
+				// Get and process grandchildren
+				$grandchildren = getDirectDescendants($child->id);
+
+				if (!empty($grandchildren)) {
+					$childNode['children'] = buildGrandchildrenNodes($grandchildren, $plan);
+				}
+
+				return $childNode;
+			},
 			$children
 		);
 	}
 
-	return $data;
+	return $tree;
 }
 
 /**
- * Builds detailed user information including plan-specific attributes
+ * Gets direct descendants (children) for a given user ID
  * 
- * @param object $user User object
- * @param string $plan Plan type
- * @return array User details
+ * @param int $userId Parent user ID
+ * @return array Array of user objects
  */
+function getDirectDescendants(int $userId): array
+{
+	return fetch_all(
+		'SELECT * 
+        FROM network_users 
+        WHERE sponsor_id = :sponsor_id 
+        AND block = :block',
+		[
+			'sponsor_id' => $userId,
+			'block' => 0
+		]
+	);
+}
+
+/**
+ * Builds nodes for grandchildren level
+ * 
+ * @param array $grandchildren Array of grandchild user objects
+ * @param string $plan Plan type
+ * @return array Processed grandchildren nodes
+ */
+function buildGrandchildrenNodes(array $grandchildren, string $plan): array
+{
+	return array_map(
+		function ($grandchild) use ($plan) {
+			return [
+				'username' => $grandchild->username,
+				'details' => buildUserDetails($grandchild, $plan)
+			];
+		},
+		$grandchildren
+	);
+}
+
 function buildUserDetails(object $user, string $plan): array
 {
 	$details = [
@@ -83,10 +117,10 @@ function buildUserDetails(object $user, string $plan): array
 		'balance' => number_format($user->balance, 2)
 	];
 
-	$planAttributes = getPlanAttributes();
+	$planAttrs = getPlanAttributes();
 
-	if (isset($planAttributes[$plan])) {
-		$planInfo = $planAttributes[$plan];
+	if (isset($planAttrs[$plan])) {
+		$planInfo = $planAttrs[$plan];
 		$details['plan'] = $planInfo['code'];
 		$details[$planInfo['field']] = number_format($user->{$planInfo['field']}, 2);
 	}
@@ -94,31 +128,6 @@ function buildUserDetails(object $user, string $plan): array
 	return $details;
 }
 
-/**
- * Retrieves direct children of a user
- * 
- * @param int $id Parent user ID
- * @return array Array of child users
- */
-function getChildren(int $id): array
-{
-	return fetch_all(
-		'SELECT * 
-        FROM network_users 
-        WHERE sponsor_id = :sponsor_id 
-        AND block = :block',
-		[
-			'sponsor_id' => $id,
-			'block' => 0
-		]
-	);
-}
-
-/**
- * Returns plan attributes configuration
- * 
- * @return array Plan attributes configuration
- */
 function getPlanAttributes(): array
 {
 	return [
@@ -127,4 +136,14 @@ function getPlanAttributes(): array
 		'leadership_binary' => ['code' => 'LB', 'field' => 'bonus_leadership'],
 		'leadership_passive' => ['code' => 'LP', 'field' => 'bonus_leadership_passive']
 	];
+}
+
+/**
+ * Debug function for development
+ */
+function debug($data, $label = '')
+{
+	echo "\n/* Debug $label */\n";
+	print_r($data);
+	echo "\n/* End Debug $label */\n";
 }
