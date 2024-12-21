@@ -4,7 +4,6 @@ namespace BPL\Ajax\Ajaxer\Genealogy;
 
 require_once 'bpl/mods/helpers.php';
 
-use function BPL\Mods\Url_SEF\sef;
 use function BPL\Mods\Helpers\db;
 
 /**
@@ -18,17 +17,12 @@ use function BPL\Mods\Helpers\db;
  */
 function main($type, $user_id, string $plan = 'binary_pair'): string
 {
-	// $dir_font = 'bpl/plugins/orgchart/assets/css/font-awesome.min.css';
-	// $dir_style = 'bpl/plugins/orgchart/assets/css/style.css';
-	// $dir_d3 = 'bpl/plugins/orgchart/assets/js/d3.min.js';
-
-	// $str = '<link rel="stylesheet" href="' . $dir_font . '">';
 	$str = '<link rel=\'stylesheet prefetch\' href=\'https://fonts.googleapis.com/css?family=Roboto\'>';
-	// $str .= '<link rel="stylesheet" href="' . $dir_style . '">';
 	$str .= '<style>
+			/* Scoped CSS to prevent conflicts with external styles */
 			:root {
 				--color-primary: steelblue;
-				--color-secondary: #ccc;
+				--color-secondary: #999;
 				--color-background: #fff;
 				--color-tooltip-bg: rgba(0, 0, 0, 0.7);
 				--color-tooltip-text: #fff;
@@ -49,30 +43,30 @@ function main($type, $user_id, string $plan = 'binary_pair'): string
 			
 				--transition-default: 200ms ease;
 			}
-
+			
 			#genealogy_' . $type . ' {
 				width: 100%;
-    			height: 100%;
-			};
-
+				height: 100%;
+			}
+			
 			/* Node styles */
-			.node circle {
+			#genealogy_' . $type . ' .node circle {
 				fill: var(--color-background);
 				stroke: var(--color-primary);
 				stroke-width: var(--stroke-width-large);
 			}
-
-			.node text {
+			
+			#genealogy_' . $type . ' .node text {
 				font: var(--font-size-base) var(--font-family-base);
 			}
-
+			
 			/* Connection line styles */
-			.link {
+			#genealogy_' . $type . ' .link {
 				fill: none;
 				stroke: var(--color-secondary);
 				stroke-width: var(--stroke-width-small);
 			}
-
+			
 			/* Tooltip */
 			.tooltip {
 				position: absolute;
@@ -85,11 +79,10 @@ function main($type, $user_id, string $plan = 'binary_pair'): string
 				pointer-events: none;
 				opacity: 0;
 				transition: opacity var(--transition-default);
-			}
+			}	
 		</style>';
 	$str .= '<div id="genealogy_' . $type . '"></div>';
 	$str .= '<div class="tooltip" id="tooltip"></div>';
-	// $str .= '<script src="' . $dir_d3 . '"></script>';
 	$str .= '<script src="https://d3js.org/d3.v7.min.js"></script>';
 	$str .= '<script>' . render($type, $user_id, $plan) . '</script>';
 
@@ -116,106 +109,6 @@ function plan_attr(): array
 		'harvest' => 'bonus_harvest'
 	];
 }
-
-// /**
-//  * @param $plan
-//  *
-//  * @return string
-//  *
-//  * @since version
-//  */
-// function details($plan): string
-// {
-// 	$attr = set_attr($plan);
-
-// 	$img = $plan !== 'binary_pair' ? '"active.png"' :
-// 		'(d.caption === "Y" || d.caption === "X" ? "active.png" : "inactive.png")';
-// 	$usr = $plan !== 'binary_pair' ? '"emp-name"' :
-// 		'(d.caption === "Y" || d.caption === "X" ? "emp-name" : "inactive-binary")';
-
-// 	$str = 'nodeGroup.append("text")
-// 	            .attr("x", dynamic.nodeTextLeftMargin)
-// 	            .attr("y", attrs.nodePadding + 10)
-// 	            .attr("class", function (d) {
-// 	                return ' . $usr . ';
-// 	            })
-// 	            .attr("text-anchor", "left")
-// 	            .text(function (d) {
-// 	                return d.username.trim();
-// 	            })
-// 	            .call(wrap, attrs.nodeWidth);' . "\n\n";
-
-// 	$str .= 'nodeGroup.append("text")
-// 	            .attr("x", dynamic.nodeTextLeftMargin)
-// 	            .attr("y", dynamic.nodePositionNameTopMargin)
-// 	            .attr("class", "emp-position-name")
-// 	            .attr("dy", ".15em")
-// 	            .attr("text-anchor", "left")	           
-// 	            .text(function (d) {	
-// 	                return d.account;
-// 	            });' . "\n\n";
-
-// 	$str .= 'nodeGroup.append("text")
-//             .attr("x", dynamic.nodeTextLeftMargin)
-//             .attr("y", attrs.nodePadding + 10 + dynamic.nodeImageHeight / 4 * 2)
-//             .attr("class", "emp-position-name")
-//             .attr("dy", "0.05em")
-//             .attr("text-anchor", "left")
-
-//             .text(function (d) {               
-//                 return d.' . $attr . ';
-//             });' . "\n\n";
-
-// 	$str .= $plan !== 'binary_pair' ? '' : 'nodeGroup.append("text")
-// 	            .attr("x", dynamic.nodeTextLeftMargin)
-// 	            .attr("y", dynamic.nodeChildCountTopMargin)
-// 	            .attr("class", function (d) {
-// 	                return ' . $usr . ';
-// 	            })
-// 	            .attr("dy", "-0.2em")
-// 	            .attr("text-anchor", "left")
-
-// 	            .text(function (d) {
-// 	                switch(d.caption) {
-// 	                    case "Y":
-// 	                        return "Active";
-// 	                    break;
-// 	                    case "X":
-// 	                        return "Reactivated";
-// 	                    break;
-// 	                    case "Z":
-// 	                        return "Maxed Out";
-// 	                    break;
-// 	                    default:
-// 	                        return "Inactive";
-// 	                    break;
-// 	                }	               
-// 	            });' . "\n\n";
-
-// 	$str .= 'nodeGroup.append("defs").append("svg:clipPath")
-// 	            .attr("id", "clip")
-// 	            .append("svg:rect")
-// 	            .attr("id", "clip-rect")
-// 	            .attr("rx", 3)
-// 	            .attr("x", attrs.nodePadding)
-// 	            .attr("y", 2 + attrs.nodePadding)
-// 	            .attr("width", dynamic.nodeImageWidth)
-// 	            .attr("fill", "none")
-// 	            .attr("height", dynamic.nodeImageHeight - 4);' . "\n\n";
-
-// 	$str .= 'nodeGroup.append("svg:image")
-// 	            .attr("y", 2 + attrs.nodePadding)
-// 	            .attr("x", attrs.nodePadding)
-// 	            .attr("preserveAspectRatio", "yes")
-// 	            .attr("width", dynamic.nodeImageWidth)
-// 	            .attr("height", dynamic.nodeImageHeight - 4)
-// 	            .attr("clip-path", "url(#clip)")
-// 	            .attr("xlink:href", function (d) {
-// 	                return params.imageUrl + ' . $img . ';
-// 	            });' . "\n\n";
-
-// 	return $str;
-// }
 
 /**
  * @param           $type
@@ -255,7 +148,7 @@ function ajax($type, $user_id, string $plan = 'binary_pair'): string
 function render($type, $user_id, $plan): string
 {
 	$attr = set_attr($plan);
-	// $str = 'var params = {};';
+
 	$str = '
 			/**
 			 * Type definition for a node in the tree structure.
@@ -287,7 +180,7 @@ function render($type, $user_id, $plan): string
 				transitionDuration: 200,     // Duration of animations in milliseconds
 				linkStyle: {
 					strokeWidth: 2,          // Width of connecting lines
-					strokeColor: "#ccc"      // Color of connecting lines
+					strokeColor: "#999"      // Color of connecting lines
 				}
 			};
 		
