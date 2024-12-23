@@ -19,6 +19,48 @@
 
 <body class="lines" id="scrollup">
 
+	<!-- Google Translate Widget -->
+	<div id="google_translate_element" style="position: absolute; right: 20px; top: 20px; z-index: 1000;"></div>
+	<script type="text/javascript">
+		function googleTranslateElementInit() {
+			new google.translate.TranslateElement({
+				pageLanguage: 'en',
+				layout: google.translate.TranslateElement.InlineLayout.SIMPLE
+			}, 'google_translate_element');
+		}
+	</script>
+	<script type="text/javascript"
+		src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+
+	<!-- Add some CSS to style the Google Translate widget -->
+	<style>
+		#google_translate_element {
+			background: rgba(255, 255, 255, 0.9);
+			padding: 4px;
+			border-radius: 4px;
+			box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+		}
+
+		.goog-te-gadget {
+			font-family: inherit !important;
+			font-size: 14px !important;
+		}
+
+		.goog-te-gadget-simple {
+			background-color: transparent !important;
+			border: none !important;
+			padding: 0 !important;
+		}
+
+		.goog-te-menu-value span {
+			color: #333 !important;
+		}
+
+		.goog-te-menu-value:hover {
+			text-decoration: none !important;
+		}
+	</style>
+
 	<img src="images/p4.png" class="vx" alt="" data-enllax-ratio="-0.1" data-enllax-type="foreground" />
 
 	<div class="page-loading">
