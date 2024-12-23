@@ -885,19 +885,30 @@ function user_plan($user_id, $plan)
  * @param $user_id
  * @param $code_type
  *
- * @param $username
- * @param $sponsor
- * @param $date
- * @param $prov
- *
  * @since version
  */
-function process_direct_referral($user_id, $code_type, $username, $sponsor, $date, $prov)
+function process_direct_referral($user_id, $code_type)
 {
 	$Settings_plans = settings('plans');
+	$settings_referral = settings('referral');
+
+	$bonus = $settings_referral->{$code_type . '_referral'};
+
+	$sponsor_id = user($user_id)->sponsor_id;
+
+	$db = db();
 
 	if ($Settings_plans->direct_referral || $Settings_plans->binary_pair) {
-		direct_referral($user_id, $code_type, $username, $sponsor, $date, $prov);
+		// direct_referral($user_id, $code_type, $username, $sponsor, $date, $prov);
+		update(
+			'network_users',
+			[
+				'payout_transfer = payout_transfer + ' . $bonus,
+				//'income_cycle_global = income_cycle_global + ' . $sponsor_referral_add,
+				'income_referral = income_referral + ' . $bonus
+			],
+			['id = ' . $db->quote($sponsor_id)]
+		);
 	}
 }
 
@@ -964,6 +975,72 @@ function process_indirect_referral($insert_id, $code_type)
 		);
 
 		indirect_referral();
+	}
+}
+
+/**
+ * @param $insert_id
+ * @param $code_type
+ *
+ * @since version
+ */
+function process_echelon_bonus($insert_id, $code_type)
+{
+	$username = input_get('username');
+	$sponsor = input_get('sponsor');
+
+	$edit = session_get('edit');
+
+	$settings_plans = settings('plans');
+	$settings_echelon = settings('echelon');
+	$settings_entry = settings('entry');
+
+	$echelon_level = $settings_echelon->{$code_type . '_echelon_level'};
+
+	$sponsor_id = '';
+
+	$user_sponsor = user_username($sponsor);
+
+	if (!empty($user_sponsor)) {
+		$sponsor_id = $user_sponsor[0]->id;
+	}
+
+	$date = input_get_date();
+
+	$db = db();
+
+	if (
+		$echelon_level &&
+		$settings_plans->echelon
+	) {
+		insert(
+			'network_echelon',
+			['id', 'user_id'],
+			[$db->quote($insert_id), $db->quote($insert_id)]
+		);
+
+		$activity = '<b>' . ucwords($settings_plans->echelon_name) . ' Entry: </b> <a href="' .
+			sef(44) . qs() . 'uid=' . $insert_id . '">' . $username . '</a> has entered into ' .
+			ucwords($settings_plans->echelon_name) . ' upon ' .
+			ucfirst($settings_entry->{$code_type . '_package_name'}) . ' Activation.';
+
+		insert(
+			'network_activity',
+			[
+				'user_id',
+				'sponsor_id',
+				'activity',
+				'activity_date'
+			],
+			[
+				$db->quote($insert_id),
+				$db->quote($sponsor_id),
+				$db->quote($activity),
+				($edit === true && (int) $date !== 0 ? $db->quote($date) : $db->quote(time()))
+			]
+		);
+
+		// indirect_referral();
 	}
 }
 
@@ -1368,7 +1445,7 @@ function process_leadership_binary($user_id, $type)
  */
 function process_plans($user_id, $type, $username, $sponsor, $date, $prov)
 {
-	process_direct_referral($user_id, $type, $username, $sponsor, $date, $prov);
+	process_direct_referral($user_id, $type);
 	process_indirect_referral($user_id, $type);
 	process_passup($user_id, $type, $username, $sponsor);
 	process_binary($user_id);
@@ -1381,6 +1458,8 @@ function process_plans($user_id, $type, $username, $sponsor, $date, $prov)
 //	process_royalty($user_id);
 //	process_passup($user_id);
 //	process_elite_reward($user_id);
+
+	process_echelon_bonus($user_id, $type);
 
 	process_compound_daily($user_id, $type);
 	process_fixed_daily($user_id, $type);

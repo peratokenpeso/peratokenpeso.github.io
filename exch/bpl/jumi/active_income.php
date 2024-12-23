@@ -45,8 +45,7 @@ function main()
 
 	$str = menu();
 
-	switch (session_get('usertype'))
-	{
+	switch (session_get('usertype')) {
 		case 'Admin':
 			$str .= admin($user_id);
 
@@ -182,14 +181,15 @@ function user_direct($user_id)
  */
 function row_direct_referral($user_id): string
 {
-	$settings_plans       = settings('plans');
+	$settings_plans = settings('plans');
 	$settings_ancillaries = settings('ancillaries');
 
 	$str = '';
 
-	if ($settings_plans->direct_referral &&
-		$settings_ancillaries->referral_mode === 'standard')
-	{
+	if (
+		$settings_plans->direct_referral &&
+		$settings_ancillaries->referral_mode === 'standard'
+	) {
 		$str .= '<tr>
 	            <td><a href="javascript:void(0)">Sponsored Members</a>:</td>
 	            <td>' . count(user_direct($user_id)) . '<a style="float:right" href="' .
@@ -224,9 +224,10 @@ function row_indirect_referral($user_id): string
 
 	$str = '';
 
-	if ($settings_plans->indirect_referral &&
-		settings('indirect_referral')->{$user->account_type . '_indirect_referral_level'})
-	{
+	if (
+		$settings_plans->indirect_referral &&
+		settings('indirect_referral')->{$user->account_type . '_indirect_referral_level'}
+	) {
 		$str .= '<tr>
 	            <td><a href="javascript:void(0)">' .
 			$settings_plans->indirect_referral_name . '</a>:</td>
@@ -249,7 +250,7 @@ function row_indirect_referral($user_id): string
  */
 function row_binary($user_id): string
 {
-//	$app = application();
+	//	$app = application();
 
 	$sp = settings('plans');
 	$sb = settings('binary');
@@ -258,29 +259,28 @@ function row_binary($user_id): string
 
 	$str = '';
 
-//	$flushout = $sb->hedge === 'flushout';
+	//	$flushout = $sb->hedge === 'flushout';
 
-	if ($binary && ($sp->binary_pair || $sp->redundant_binary))
-	{
+	if ($binary && ($sp->binary_pair || $sp->redundant_binary)) {
 		$user_binary = user_binary($user_id);
 
 		$status = $user_binary->status;
 
-//		if ($status === 'inactive')
+		//		if ($status === 'inactive')
 //		{
 //			$app->redirect(Uri::root(true) . '/' .
 //				sef(2), 'Reactivate Your ' . $sp->binary_pair_name . '!', 'notice');
 //		}
 
-//		$account_type = $user_binary->account_type;
+		//		$account_type = $user_binary->account_type;
 
-//		$reactivate_count = $binary->reactivate_count;
+		//		$reactivate_count = $binary->reactivate_count;
 //		$income_cycle     = $binary->income_cycle;
 //
 //		$s_capping_cycle_max = $sb->{$account_type . '_capping_cycle_max'};
 //		$s_maximum_income    = $sb->{$account_type . '_maximum_income'};
 
-//		$reactivate = $reactivate_count >= $s_capping_cycle_max ?
+		//		$reactivate = $reactivate_count >= $s_capping_cycle_max ?
 //			($income_cycle >= $s_maximum_income ?
 //				'<a style="float:right; color: orange" href="' . sef(110) . '">Upgrade Account</a>' : '') :
 //			(($status === 'active'
@@ -289,8 +289,7 @@ function row_binary($user_id): string
 //			) ? '' :
 //				'<a style="float:right" href="' . sef(120) . '">Reactivate Binary</a>');
 
-		switch ($status)
-		{
+		switch ($status) {
 			case 'active':
 				$flag = 'Active';
 				break;
@@ -329,10 +328,11 @@ function row_leadership_binary($user_id): string
 
 	$str = '';
 
-	if ($settings_plans->leadership_binary &&
+	if (
+		$settings_plans->leadership_binary &&
 		$settings_plans->binary_pair &&
-		binary($user_id))
-	{
+		binary($user_id)
+	) {
 		$str .= '<tr>
 	        <td><a href="javascript:void(0)">' .
 			$settings_plans->leadership_binary_name . '</a>:</td>
@@ -418,12 +418,13 @@ function row_power($user_id): string
 
 	$str = '';
 
-	if ($settings_plans->power &&
+	if (
+		$settings_plans->power &&
 		(user_power($user_id, 'executive') ||
 			user_power($user_id, 'regular') ||
 			user_power($user_id, 'associate') ||
-			user_power($user_id, 'basic')))
-	{
+			user_power($user_id, 'basic'))
+	) {
 		$str .= '<tr>
 	            <td><a href="javascript:void(0)">' .
 			$settings_plans->power_name . '</a>:</td>
@@ -446,7 +447,7 @@ function row_power($user_id): string
  */
 function row_unilevel($user_id): string
 {
-	$sp  = settings('plans');
+	$sp = settings('plans');
 	$sul = settings('unilevel');
 
 	$unilevel_maintain = user_unilevel($user_id)->period_unilevel ?? 0;
@@ -455,12 +456,13 @@ function row_unilevel($user_id): string
 
 	$str = '';
 
-	if ($sp->unilevel
+	if (
+		$sp->unilevel
 		&& $sul->{$user->account_type . '_unilevel_level'}
-		&& !empty(user_unilevel($user_id)))
-	{
-		$requirement  = $sul->{$user->account_type . '_unilevel_maintenance'};
-		$offset       = abs($unilevel_maintain - $requirement);
+		&& !empty(user_unilevel($user_id))
+	) {
+		$requirement = $sul->{$user->account_type . '_unilevel_maintenance'};
+		$offset = abs($unilevel_maintain - $requirement);
 		$has_maintain = $unilevel_maintain >= $requirement;
 
 		$str .= '<tr>
@@ -492,6 +494,26 @@ function row_royalty($user_id): string
 	            <td><a href="javascript:void(0)">' .
 		$settings_plans->royalty_name . '</a>:</td>
 	            <td>' . number_format(user($user_id)->rank_reward, 8) .
+		' ' . settings('ancillaries')->currency . '</td>
+	        </tr>' : '';
+}
+
+/**
+ *
+ * @param $user_id
+ *
+ * @return string
+ *
+ * @since version
+ */
+function row_echelon($user_id): string
+{
+	$settings_plans = settings('plans');
+
+	return $settings_plans->echelon ? '<tr>
+	            <td><a href="javascript:void(0)">' .
+		$settings_plans->echelon_name . '</a>:</td>
+	            <td>' . number_format(user($user_id)->bonus_echelon, 8) .
 		' ' . settings('ancillaries')->currency . '</td>
 	        </tr>' : '';
 }
@@ -552,8 +574,7 @@ function row_elite($user_id): string
 
 	$str = '';
 
-	if ($settings_plans->elite_reward && $user->elite)
-	{
+	if ($settings_plans->elite_reward && $user->elite) {
 		$str .= '<tr>
 	            <td><a href="javascript:void(0)">' .
 			$settings_plans->elite_reward_name . '</a>:</td>
@@ -580,8 +601,7 @@ function row_stockist($user_id): string
 
 	$str = '';
 
-	if ($user->account_type === 'regular' && settings('entry')->regular_global)
-	{
+	if ($user->account_type === 'regular' && settings('entry')->regular_global) {
 		$str .= '<tr>
 	            <td><a href="javascript:void(0)">Stockist Bonus</a>:</td>
 	            <td>' . number_format($user->stockist_bonus, 8) .
@@ -607,8 +627,7 @@ function row_franchise($user_id): string
 
 	$str = '';
 
-	if ($user->account_type === 'executive' && settings('entry')->executive_global)
-	{
+	if ($user->account_type === 'executive' && settings('entry')->executive_global) {
 		$str .= '<tr>
 	            <td><a href="javascript:void(0)">Franchise Bonus</a>:</td>
 	            <td>' . number_format($user->franchise_bonus, 8) .
@@ -665,8 +684,7 @@ function table_binary_summary($user_id): string
 
 	$str = '';
 
-	if ($binary && ($sp->binary_pair || $sp->redundant_binary))
-	{
+	if ($binary && ($sp->binary_pair || $sp->redundant_binary)) {
 		$str .= '<hr class="uk-grid-divider">
 		    <h3>' . $sp->binary_pair_name . ' Summary</h3>
 		    <table class="category table table-striped table-bordered table-hover">
@@ -738,17 +756,15 @@ function member($user_id): string
 
 	$sp = settings('plans');
 
-	if ($sp->binary_pair)
-	{
+	if ($sp->binary_pair) {
 		$user_binary = user_binary($user_id);
 
 		$status = $user_binary->status;
 
-		$reactivate_count  = $user_binary->reactivate_count;
+		$reactivate_count = $user_binary->reactivate_count;
 		$capping_cycle_max = settings('binary')->{$user_binary->account_type . '_capping_cycle_max'};
 
-		if ($status === 'inactive' && $reactivate_count < $capping_cycle_max)
-		{
+		if ($status === 'inactive' && $reactivate_count < $capping_cycle_max) {
 			$str .= '<div class="uk-width-1-1 uk-grid-margin uk-row-first">
                     <div class="uk-alert uk-alert-warning" data-uk-alert="">
                         <a class="uk-alert-close uk-close"></a>
@@ -807,6 +823,7 @@ function core($user_id): string
 	$str .= row_power($user_id);
 	$str .= row_unilevel($user_id);
 	$str .= row_royalty($user_id);
+	$str .= row_echelon($user_id);
 	$str .= row_upline_support($user_id);
 	$str .= row_passup($user_id);
 	$str .= row_elite($user_id);

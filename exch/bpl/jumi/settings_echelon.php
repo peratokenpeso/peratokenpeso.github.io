@@ -1,19 +1,17 @@
 <?php
 
-namespace BPL\Jumi\Settings_Plans;
+namespace BPL\Jumi\Settings_Echelon;
 
 require_once 'bpl/menu.php';
-require_once 'bpl/settings/plans.php';
+require_once 'bpl/settings/echelon.php';
 require_once 'bpl/mods/helpers.php';
-
-use Exception;
 
 use Joomla\CMS\Uri\Uri;
 
 use function BPL\Menu\admin as menu_admin;
 
-use function BPL\Settings\Plans\update as update_settings_plans;
-use function BPL\Settings\Plans\view as view_settings_plans;
+use function BPL\Settings\Echelon\update as update_echelon;
+use function BPL\Settings\Echelon\view as view_echelon;
 
 use function BPL\Mods\Url_SEF\sef;
 
@@ -39,12 +37,9 @@ function main()
 
 	$str = menu_admin($admintype, $account_type, $user_id, $username);
 
-	try {
-		update_settings_plans();
+	update_echelon();
 
-		$str .= view_settings_plans();
-	} catch (Exception $e) {
-	}
+	$str .= view_echelon();
 
 	echo $str;
 }

@@ -455,10 +455,12 @@ function loan_admin($admintype): string
  *
  * @since version
  */
-function efund_member(): string
+function efund_member($user_id): string
 {
 	$sa = settings('ancillaries');
 	//	$efund_name = $sa->efund_name;
+
+	$account_type = user($user_id)->account_type;
 
 	$str = '<div class="uk-button-group" style="display: block; width: 100%; margin-bottom: 10px;">
         <button class="uk-button" style="width: 80%;">' . /*$efund_name*/
@@ -475,12 +477,16 @@ function efund_member(): string
 		'Funds Transactions</a></li>';
 	$str .= '<li><a href="' . sef(75) . '">Request ' . /*$efund_name .*/
 		' Logs</a></li>';
-	$str .= '<li><a href="' . sef(57) . '">Convert Funds ' . /*$efund_name .*/
-		'</a></li>';
-	$str .= '<li><a href="' . sef(59) . '">' . /*$efund_name .*/
-		' Conversion History</a></li>';
-	$str .= '<li><a href="' . sef(122) . '">' . /*$efund_name .*/
-		' Conversion Logs</a></li>';
+
+	if ($account_type !== 'starter') {
+		$str .= '<li><a href="' . sef(57) . '">Convert Funds ' . /*$efund_name .*/
+			'</a></li>';
+		$str .= '<li><a href="' . sef(59) . '">' . /*$efund_name .*/
+			' Conversion History</a></li>';
+		$str .= '<li><a href="' . sef(122) . '">' . /*$efund_name .*/
+			' Conversion Logs</a></li>';
+	}
+
 	$str .= '</ul>
             </div>
         </div>
@@ -957,6 +963,8 @@ function settings_adjust($admintype): string
 			$settings_plans->direct_referral_name . '</a></li>' : '');
 		$str .= (($settings_plans->indirect_referral) ? '<li><a href="' . sef(82) . '">' .
 			$settings_plans->indirect_referral_name . '</a></li>' : '');
+		$str .= (($settings_plans->echelon) ? '<li><a href="' . sef(146) . '">' .
+			$settings_plans->echelon_name . '</a></li>' : '');
 		$str .= (($settings_plans->unilevel) ? '<li><a href="' . sef(93) . '">' .
 			$settings_plans->unilevel_name . '</a></li>' : '');
 		$str .= (($settings_plans->royalty) ? '<li><a href="' . sef(90) . '">' .
@@ -1303,6 +1311,40 @@ function unilevel($user_id): string
 	return $str;
 }
 
+function echelon($user_id): string
+{
+	$settings_plans = settings('plans');
+	$settings_echelon = settings('echelon');
+
+	$user = user($user_id);
+
+	$account_type = $user->account_type;
+
+	$str = '';
+
+	if ($account_type !== 'starter') {
+		// unilevel: start
+		$str .= (($settings_plans->echelon
+			&& $settings_echelon->{$account_type . '_echelon_level'} > 0
+			&& !empty(user_echelon($user_id))
+		) ? '<div class="uk-button-group" style="display: block; width: 100%; margin-bottom: 10px;">
+            <button class="uk-button" style="width: 80%;">' . $settings_plans->echelon_name . '</button>
+            <div class="" data-uk-dropdown="{mode:\'click\'}">
+                <button class="uk-button"><i class="uk-icon-caret-down"></i></button>
+                <div style="" class="uk-dropdown uk-dropdown-small">
+                    <ul class="uk-nav uk-nav-dropdown">' .
+			// '<li><a href="' . sef(33) . '">Genealogy Echelon</a></li>' .
+			'<li><a href="' . sef(145) . '">Table Summary</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>' : '');
+		// unilevel: end
+	}
+
+	return $str;
+}
+
 /**
  * @param $user_id
  *
@@ -1317,6 +1359,17 @@ function user_unilevel($user_id)
 	return $db->setQuery(
 		'SELECT * ' .
 		'FROM network_unilevel ' .
+		'WHERE user_id = ' . $db->quote($user_id)
+	)->loadObject();
+}
+
+function user_echelon($user_id)
+{
+	$db = db();
+
+	return $db->setQuery(
+		'SELECT * ' .
+		'FROM network_echelon ' .
 		'WHERE user_id = ' . $db->quote($user_id)
 	)->loadObject();
 }
@@ -1771,6 +1824,7 @@ function core($account_type, $user_id): string
 	$str .= $account_type === 'starter' ? '' : table_matrix($account_type, $user_id);
 	$str .= $account_type === 'starter' ? '' : indirect_referral($user_id);
 	$str .= $account_type === 'starter' ? '' : unilevel($user_id);
+	$str .= $account_type === 'starter' ? '' : echelon($user_id);
 	$str .= $account_type === 'starter' ? '' : investment($account_type);
 
 	return $str;
@@ -1835,7 +1889,7 @@ function member($account_type, $username, $user_id): string
 	$str .= p2p_commerce();
 
 	$str .= /*$account_type !== 'starter' ?*/
-		efund_member() /*: ''*/
+		efund_member($user_id) /*: ''*/
 	;
 
 	//	$str .= $account_type !== 'starter' ? '' :
@@ -1923,10 +1977,19 @@ function affiliates($account_type, $user_id): string
 		$str .= '<li><a href="' . sef(36) . '">Profit Summary</a></li>';
 	}
 
+	if ($sp->echelon && user_echelon($user_id)) {
+		$first = 1;
+
+		$str .= '<li class="uk-nav-header">' . $sp->echelon_name . '</li>';
+
+		// $str .= '<li><a href="' . sef(24) . '">Genealogy</a></li>';
+		$str .= '<li><a href="' . sef(145) . '">Profit Summary</a></li>';
+	}
+
 	// unilevel
 	if (
 			/*$account_type !== 'starter'
-				  &&*/ (
+																																								  &&*/ (
 			$sp->unilevel
 			&& $sul->{$account_type . '_unilevel_level'} > 0
 			&& !empty(user_unilevel($user_id))
@@ -1944,7 +2007,7 @@ function affiliates($account_type, $user_id): string
 	//binary
 	if (
 			/*$account_type !== 'starter'
-				  &&*/ ($sp->binary_pair || $sp->redundant_binary)
+																																								  &&*/ ($sp->binary_pair || $sp->redundant_binary)
 	) {
 		$str .= $first ? '<li class="uk-nav-divider"></li>' : '';
 		$first = !$first ? 1 : $first;
@@ -1958,7 +2021,7 @@ function affiliates($account_type, $user_id): string
 	// leadership binary
 	if (
 		/*$account_type !== 'starter'
-			  &&*/ $sp->binary_pair
+																											  &&*/ $sp->binary_pair
 		&& $sp->leadership_binary
 		&& $slb->{$account_type . '_leadership_level'} > 0
 	) {
@@ -1974,7 +2037,7 @@ function affiliates($account_type, $user_id): string
 	// leadership passive
 	if (
 			/*$account_type !== 'starter'
-				  &&*/ (
+																																								  &&*/ (
 			$sp->leadership_passive
 			&& $slp->{$account_type . '_leadership_passive_level'} > 0
 			&& (

@@ -2,6 +2,7 @@
 
 namespace BPL\Jumi\Convert_Efund_Pending;
 
+require_once 'bpl/echelon_bonus.php';
 require_once 'bpl/menu.php';
 require_once 'bpl/mods/query.php';
 require_once 'bpl/mods/mailer.php';
@@ -15,6 +16,9 @@ use Joomla\CMS\Uri\Uri;
 use Joomla\CMS\Exception\ExceptionHandler;
 
 use RuntimeException;
+
+use function BPL\Echelon_Bonus\main as echelon_bonus;
+
 use function BPL\Menu\admin as menu_admin;
 use function BPL\Menu\manager as menu_manager;
 
@@ -602,16 +606,15 @@ function update_user_efund($amount, $user_id, $mode)
 }
 
 /**
- * @param $uid
- *
- *
- * @since version
+ * Summary of BPL\Jumi\Convert_Efund_Pending\update_efund_convert
+ * @param mixed $uid
+ * @return bool|mixed
  */
 function update_efund_convert($uid)
 {
 	$db = db();
 
-	update(
+	return update(
 		'network_efund_convert',
 		['date_approved = ' . $db->quote(time())],
 		['convert_id = ' . $db->quote($uid)]
@@ -647,7 +650,10 @@ function process_approve($uid)
 		$db->transactionStart();
 
 		update_user_efund($user_convert->amount, $user_convert->id, $user_convert->mode);
-		update_efund_convert($uid);
+
+		if (update_efund_convert($uid)) {
+			echelon_bonus();
+		}
 
 		logs_approve($uid);
 
@@ -1019,3 +1025,70 @@ function page_validate($usertype)
 		application()->redirect(Uri::root(true) . '/' . sef(43));
 	}
 }
+
+// /**
+//  * @param $user_id
+//  * @param $code_type
+//  * @param $amount
+//  *
+//  * @since version
+//  */
+// function process_echelon_bonus($code_type)
+// {
+// 	// $username = input_get('username');
+// 	// $sponsor = input_get('sponsor');
+
+// 	// $edit = session_get('edit');
+
+// 	$settings_plans = settings('plans');
+// 	$settings_echelon = settings('echelon');
+// 	// $settings_entry = settings('entry');
+
+// 	$echelon_level = $settings_echelon->{$code_type . '_echelon_level'};
+
+// 	// $sponsor_id = user($user_id)->sponsor_id;
+
+// 	// $user_sponsor = user_username($sponsor);
+
+// 	// if (!empty($user_sponsor)) {
+// 	// 	$sponsor_id = $user_sponsor[0]->id;
+// 	// }
+
+// 	// $date = input_get_date();
+
+// 	$db = db();
+
+// 	if (
+// 		$echelon_level &&
+// 		$settings_plans->echelon
+// 	) {
+// 		// insert(
+// 		// 	'network_indirect',
+// 		// 	['id', 'user_id'],
+// 		// 	[$db->quote($user_id), $db->quote($user_id)]
+// 		// );
+
+// 		// $activity = '<b>' . ucwords($settings_plans->indirect_referral_name) . ' Entry: </b> <a href="' .
+// 		// 	sef(44) . qs() . 'uid=' . $user_id . '">' . $username . '</a> has entered into ' .
+// 		// 	ucwords($settings_plans->indirect_referral_name) . ' upon ' .
+// 		// 	ucfirst($settings_entry->{$code_type . '_package_name'}) . ' Sign Up.';
+
+// 		// insert(
+// 		// 	'network_activity',
+// 		// 	[
+// 		// 		'user_id',
+// 		// 		'sponsor_id',
+// 		// 		'activity',
+// 		// 		'activity_date'
+// 		// 	],
+// 		// 	[
+// 		// 		$db->quote($user_id),
+// 		// 		$db->quote($sponsor_id),
+// 		// 		$db->quote($activity),
+// 		// 		($edit === true && (int) $date !== 0 ? $db->quote($date) : $db->quote(time()))
+// 		// 	]
+// 		// );
+
+// 		echelon_bonus();
+// 	}
+// }
