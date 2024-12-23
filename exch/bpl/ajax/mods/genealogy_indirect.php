@@ -133,6 +133,7 @@ function getPlanAttributes(): array
 	return [
 		'indirect_referral' => ['code' => 'IR', 'field' => 'bonus_indirect_referral'],
 		'unilevel' => ['code' => 'UB', 'field' => 'unilevel'],
+		'echelon' => ['code' => 'EB', 'field' => 'bonus_echelon'],
 		'leadership_binary' => ['code' => 'LB', 'field' => 'bonus_leadership'],
 		'leadership_passive' => ['code' => 'LP', 'field' => 'bonus_leadership_passive']
 	];

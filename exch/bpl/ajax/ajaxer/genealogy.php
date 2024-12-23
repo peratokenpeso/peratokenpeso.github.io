@@ -96,6 +96,7 @@ function plan_attr(): array
 	return [
 		'indirect_referral' => 'bonus_indirect_referral',
 		'unilevel' => 'unilevel',
+		'echelon' => 'bonus_echelon',
 		'binary_pair' => 'income_cycle',
 		'leadership_binary' => 'bonus_leadership',
 		'leadership_passive' => 'bonus_leadership_passive',

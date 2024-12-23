@@ -1982,14 +1982,14 @@ function affiliates($account_type, $user_id): string
 
 		$str .= '<li class="uk-nav-header">' . $sp->echelon_name . '</li>';
 
-		// $str .= '<li><a href="' . sef(24) . '">Genealogy</a></li>';
+		$str .= '<li><a href="' . sef(147) . '">Genealogy</a></li>';
 		$str .= '<li><a href="' . sef(145) . '">Profit Summary</a></li>';
 	}
 
 	// unilevel
 	if (
 			/*$account_type !== 'starter'
-																																								  &&*/ (
+																																										   &&*/ (
 			$sp->unilevel
 			&& $sul->{$account_type . '_unilevel_level'} > 0
 			&& !empty(user_unilevel($user_id))
@@ -2007,7 +2007,7 @@ function affiliates($account_type, $user_id): string
 	//binary
 	if (
 			/*$account_type !== 'starter'
-																																								  &&*/ ($sp->binary_pair || $sp->redundant_binary)
+																																										   &&*/ ($sp->binary_pair || $sp->redundant_binary)
 	) {
 		$str .= $first ? '<li class="uk-nav-divider"></li>' : '';
 		$first = !$first ? 1 : $first;
@@ -2021,7 +2021,7 @@ function affiliates($account_type, $user_id): string
 	// leadership binary
 	if (
 		/*$account_type !== 'starter'
-																											  &&*/ $sp->binary_pair
+																													&&*/ $sp->binary_pair
 		&& $sp->leadership_binary
 		&& $slb->{$account_type . '_leadership_level'} > 0
 	) {
@@ -2037,7 +2037,7 @@ function affiliates($account_type, $user_id): string
 	// leadership passive
 	if (
 			/*$account_type !== 'starter'
-																																								  &&*/ (
+																																										   &&*/ (
 			$sp->leadership_passive
 			&& $slp->{$account_type . '_leadership_passive_level'} > 0
 			&& (
