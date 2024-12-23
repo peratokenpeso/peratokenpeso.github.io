@@ -254,7 +254,7 @@ function process_login($username, $password, $usertype, $attempts, $max_attempts
 						session_set('user_id', $login->id);
 						session_set('attempts', 0);
 
-						$app->redirect(Uri::root(true) . '/' . sef(/*43*/ 55));
+						$app->redirect(Uri::root(true) . '/' . sef(43 /*55*/));
 					} else {
 						$app->redirect(
 							Uri::root(true) . '/' . sef(43),
@@ -818,6 +818,7 @@ function core($user_id): string
 	$str .= row_harvest($user_id);
 	$str .= row_power($user_id);
 	$str .= row_unilevel($user_id);
+	$str .= row_echelon($user_id);
 	$str .= row_royalty($user_id);
 	$str .= row_upline_support($user_id);
 	$str .= row_passup($user_id);
@@ -1410,6 +1411,26 @@ function row_unilevel($user_id): string
  *
  * @since version
  */
+function row_echelon($user_id): string
+{
+	$settings_plans = settings('plans');
+
+	return $settings_plans->echelon ? '<tr>
+	            <td><a href="javascript:void(0)">' .
+		$settings_plans->echelon_name . '</a>:</td>
+	            <td>' . number_format(user($user_id)->bonus_echelon, 8) .
+		' ' . settings('ancillaries')->currency . '</td>
+	        </tr>' : '';
+}
+
+/**
+ *
+ * @param $user_id
+ *
+ * @return string
+ *
+ * @since version
+ */
 function row_royalty($user_id): string
 {
 	$settings_plans = settings('plans');
@@ -1591,7 +1612,7 @@ function row_savings($user_id): string
 'balance' : 'payout_transfer'*/ 'share_fund';
 
 	/*$reactivate = $user->status_global === 'active' ? '' :
-					'<a style="float:right" href="' . sef(130) . '">Reactivate Account</a>';*/
+						  '<a style="float:right" href="' . sef(130) . '">Reactivate Account</a>';*/
 
 	return '<tr>
 	        <td><a href="javascript:void(0)">' . $sa->share_fund_name . '</a>:</td>
@@ -1620,7 +1641,7 @@ function row_loans($user_id): string
 'balance' : 'payout_transfer'*/ 'loans';
 
 	/*$reactivate = $user->status_global === 'active' ? '' :
-					'<a style="float:right" href="' . sef(130) . '">Reactivate Account</a>';*/
+						  '<a style="float:right" href="' . sef(130) . '">Reactivate Account</a>';*/
 
 	return '<tr>
 	        <td><a href="javascript:void(0)">Loans</a>:</td>
