@@ -2,129 +2,81 @@
 
 namespace BPL\Ajax\Mods\Binary\Genealogy;
 
+use Exception;
+
 use function BPL\Mods\Local\Database\Query\fetch;
 use function BPL\Mods\Local\Database\Query\fetch_all;
-
 use function BPL\Mods\Local\Helpers\settings;
+use function BPL\Mods\Local\Helpers\user;
 
-$id_user = filter_input(INPUT_POST, 'id_user', FILTER_VALIDATE_INT);
-$plan    = filter_input(INPUT_POST, 'plan', FILTER_SANITIZE_STRING);
+// Input validation with meaningful defaults
+$id_user = filter_input(INPUT_POST, 'id_user', FILTER_VALIDATE_INT) ?: 0;
+$plan = filter_input(INPUT_POST, 'plan', FILTER_SANITIZE_FULL_SPECIAL_CHARS) ?: '';
 
-main($id_user, $plan);
+try {
+	echo generateNetworkTree($id_user, $plan);
+} catch (Exception $e) {
+	http_response_code(400);
+	echo json_encode(['error' => $e->getMessage()]);
+}
 
-/**
- * @param $id_user
- * @param $plan
- *
- *
- * @since version
- */
-function main($id_user, $plan)
+function generateNetworkTree(int $id_user, string $plan): string
 {
-	$head = user_binary($id_user);
-
-	echo '{';
-
-	details($head, $plan);
-
-	if (!empty(get_child_binary($id_user)))
-	{
-		echo ', "children": [';
-		make_json($id_user, $plan);
-		echo ']';
+	if (!$id_user || !$plan) {
+		throw new Exception('Invalid user ID or plan provided');
 	}
 
-	echo '}';
-}
+	$head = userBinary($id_user);
 
-/**
- * @param $parent
- * @param $plan
- *
- *
- * @since version
- */
-function make_json($parent, $plan)
-{
-	$children = get_child_binary($parent);
-
-	if (!empty($children))
-	{
-		foreach ($children as $child)
-		{
-			echo array_search($child, $children, true) > 0 ? ', {' : '{';
-
-			details($child, $plan);
-
-			if (!empty(get_child_binary($child->user_id)))
-			{
-				echo ', "children": [';
-				make_json($child->user_id, $plan);
-				echo ']';
-			}
-
-			echo '}';
-		}
-	}
-}
-
-function user_cd($user_id)
-{
-	return fetch(
-		'SELECT * ' .
-		'FROM network_commission_deduct ' .
-		'WHERE id = :id',
-		['id' => $user_id]
-	);
-}
-
-/**
- * @param $child
- * @param $plan
- *
- *
- * @since version
- */
-function details($child, $plan): void
-{
-	echo '"id": "' . $child->user_id . '", ';
-	echo '"username": "' . $child->username . '", ';
-	echo '"account": "' . settings('entry')->{$child->account_type . '_package_name'} .
-		(!empty(user_cd($child->user_id)) ? '_CD' : '') . '", ';
-
-	if ($plan === 'binary_pair')
-	{
-		switch ($child->status)
-		{
-			case 'active':
-				$caption = 'y';
-				break;
-			case 'reactivated':
-				$caption = 'x';
-				break;
-			case 'graduate':
-				$caption = 'z';
-				break;
-			default:
-				$caption = 'n';
-				break;
-		}
-
-		echo '"caption": "' . ucfirst($caption) . '", ';
-		echo '"income_cycle": "' . number_format($child->income_cycle, 2) . '", ';
+	if (!$head) {
+		throw new Exception('User not found');
 	}
 
-	echo '"balance": "' . number_format($child->balance, 2) . '"';
+	return json_encode(buildTreeData($head, $plan));
+}
+
+function buildTreeData(object $user, string $plan): array
+{
+	// Step 1: Build the parent node
+	$tree = [
+		'username' => $user->username,
+		'details' => buildUserDetails($user, $plan)
+	];
+
+	// Step 2: Get and process direct children
+	$children = getBinaryDownlines($user->id);
+
+	if (!empty($children)) {
+		$tree['children'] = array_map(
+			function ($child) use ($plan) {
+				$childNode = [
+					'username' => $child->username,
+					'details' => buildUserDetails($child, $plan)
+				];
+
+				// Get and process grandchildren
+				$grandchildren = getBinaryDownlines($child->id);
+
+				if (!empty($grandchildren)) {
+					$childNode['children'] = buildGrandchildrenNodes($grandchildren, $plan);
+				}
+
+				return $childNode;
+			},
+			$children
+		);
+	}
+
+	return $tree;
 }
 
 /**
- * @param $id
- *
- * @return array
- *
- * @since version
+ * Gets direct descendants (children) for a given user ID
+ * 
+ * @param int $userId Parent user ID
+ * @return array Array of user objects
  */
-function get_child_binary($id): array
+function getBinaryDownlines(int $userId): array
 {
 	return fetch_all(
 		'SELECT * ' .
@@ -134,20 +86,71 @@ function get_child_binary($id): array
 		'WHERE u.block = :block ' .
 		'AND b.upline_id = :upline_id',
 		[
-			'upline_id' => $id,
-			'block'     => 0
+			'upline_id' => $userId,
+			'block' => 0
 		]
 	);
 }
 
 /**
- * @param $id_user
- *
- * @return mixed
- *
- * @since version
+ * Builds nodes for grandchildren level
+ * 
+ * @param array $grandchildren Array of grandchild user objects
+ * @param string $plan Plan type
+ * @return array Processed grandchildren nodes
  */
-function user_binary($id_user)
+function buildGrandchildrenNodes(array $grandchildren, string $plan): array
+{
+	return array_map(
+		function ($grandchild) use ($plan) {
+			return [
+				'username' => $grandchild->username,
+				'details' => buildUserDetails($grandchild, $plan)
+			];
+		},
+		$grandchildren
+	);
+}
+
+function buildUserDetails(object $user, string $plan): array
+{
+	$balance = number_format($user->payout_transfer, 2);
+
+	if (settings('ancillaries')->withdrawal_mode === 'standard') {
+		$balance = number_format($user->balance, 2);
+	}
+
+	$details = [
+		'id' => $user->id,
+		'account' => settings('entry')->{$user->account_type . '_package_name'},
+		'balance' => $balance,
+		'income_cycle' => $user->income_cycle,
+		'status' => ucfirst($user->status)
+	];
+
+	// $planAttrs = getPlanAttributes();
+
+	// if (isset($planAttrs[$plan])) {
+	// 	$planInfo = $planAttrs[$plan];
+	// 	$details['plan'] = $planInfo['code'];
+	// 	$details[$planInfo['field']] = number_format($user->{$planInfo['field']}, 2);
+	// }
+
+	return $details;
+}
+
+// function getPlanAttributes(): array
+// {
+// 	return [
+// 		'indirect_referral' => ['code' => 'IR', 'field' => 'bonus_indirect_referral'],
+// 		'unilevel' => ['code' => 'UB', 'field' => 'unilevel'],
+// 		'echelon' => ['code' => 'EB', 'field' => 'bonus_echelon'],
+// 		'leadership_binary' => ['code' => 'LB', 'field' => 'bonus_leadership'],
+// 		'leadership_passive' => ['code' => 'LP', 'field' => 'bonus_leadership_passive']
+// 	];
+// }
+
+function userBinary($id_user)
 {
 	return fetch(
 		'SELECT * ' .
@@ -157,4 +160,14 @@ function user_binary($id_user)
 		'WHERE u.id = :user_id',
 		['user_id' => $id_user]
 	);
+}
+
+/**
+ * Debug function for development
+ */
+function debug($data, $label = '')
+{
+	echo "\n/* Debug $label */\n";
+	print_r($data);
+	echo "\n/* End Debug $label */\n";
 }

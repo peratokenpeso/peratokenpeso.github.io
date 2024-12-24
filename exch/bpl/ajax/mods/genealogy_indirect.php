@@ -111,10 +111,16 @@ function buildGrandchildrenNodes(array $grandchildren, string $plan): array
 
 function buildUserDetails(object $user, string $plan): array
 {
+	$balance = number_format($user->payout_transfer, 2);
+
+	if (settings('ancillaries')->withdrawal_mode === 'standard') {
+		$balance = number_format($user->balance, 2);
+	}
+
 	$details = [
 		'id' => $user->id,
 		'account' => settings('entry')->{$user->account_type . '_package_name'},
-		'balance' => number_format($user->balance, 2)
+		'balance' => $balance
 	];
 
 	$planAttrs = getPlanAttributes();

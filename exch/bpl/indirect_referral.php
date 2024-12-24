@@ -34,20 +34,19 @@ function main()
 
 	$users = users();
 
-	foreach ($users as $user)
-	{
+	foreach ($users as $user) {
 		$account_type = $user->account_type;
-		$user_id      = $user->id;
-//		$username      = $user->username;
+		$user_id = $user->id;
+		//		$username      = $user->username;
 //		$sponsor_id    = $user->sponsor_id;
 		$user_bonus_ir = $user->bonus_indirect_referral;
 
 		$sponsored = user_direct($user_id);
 
-		$type_level         = $settings_ir->{$account_type . '_indirect_referral_level'};
-		$type_directs       = $settings_ir->{$account_type . '_indirect_referral_sponsored'};
+		$type_level = $settings_ir->{$account_type . '_indirect_referral_level'};
+		$type_directs = $settings_ir->{$account_type . '_indirect_referral_sponsored'};
 		$income_limit_cycle = $settings_ir->{$account_type . '_indirect_referral_max_daily_income'};
-		$income_max         = $settings_ir->{$account_type . '_indirect_referral_maximum'};
+		$income_max = $settings_ir->{$account_type . '_indirect_referral_maximum'};
 
 		$user_ir = user_indirect($user_id);
 
@@ -55,25 +54,21 @@ function main()
 
 		if (
 			$type_level
-//	        && empty(user_cd($user_id))
+			//	        && empty(user_cd($user_id))
 			&& count($sponsored) >= $type_directs
 			/*&& (($income_limit_cycle > 0 && $income_today < $income_limit_cycle) || !$income_limit_cycle)
-			&& ($income_max > 0 && $user_bonus_ir < $income_max || !$income_max)*/
-		)
-		{
+					 && ($income_max > 0 && $user_bonus_ir < $income_max || !$income_max)*/
+		) {
 			// whole value
 			$ir_total = total($user_id)['bonus'];
-			$ir_add   = $ir_total - $user_ir->bonus_indirect_last;
+			$ir_add = $ir_total - $user_ir->bonus_indirect_last;
 
-			if ($ir_add > 0)
-			{
-				if ($income_limit_cycle > 0 && ($income_today + $ir_add) >= $income_limit_cycle)
-				{
+			if ($ir_add > 0) {
+				if ($income_limit_cycle > 0 && ($income_today + $ir_add) >= $income_limit_cycle) {
 					$ir_add = non_zero($income_limit_cycle - $income_today);
 				}
 
-				if ($income_max > 0 && ($user_bonus_ir + $ir_add) >= $income_max)
-				{
+				if ($income_max > 0 && ($user_bonus_ir + $ir_add) >= $income_max) {
 					$ir_add = non_zero($income_max - $user_bonus_ir);
 				}
 
@@ -82,7 +77,7 @@ function main()
 
 				/*if (*/
 				update_bonus_ir($ir_total, $ir_add, $user);/*)*/
-//				{
+				//				{
 //					update_user($bonus_ir_new, $ir_add, $user_id);
 //					log_activity($ir_add, $user_id, $sponsor_id, $username);
 //				}
@@ -116,8 +111,8 @@ function update_bonus_ir($ir, $ir_add, $user)
 {
 	$db = db();
 
-	$user_id    = $user->id;
-	$username   = $user->username;
+	$user_id = $user->id;
+	$username = $user->username;
 	$sponsor_id = $user->sponsor_id;
 
 	$se = settings('entry');
@@ -127,17 +122,15 @@ function update_bonus_ir($ir, $ir_add, $user)
 
 	$income_cycle_global = $user->income_cycle_global;
 
-	$entry  = $se->{$account_type . '_entry'};
+	$entry = $se->{$account_type . '_entry'};
 	$factor = $sf->{$account_type . '_percentage'} / 100;
 
 	$freeze_limit = $entry * $factor;
 
 	$status = $user->status_global;
 
-	if ($income_cycle_global >= $freeze_limit)
-	{
-		if ($status === 'active')
-		{
+	if ($income_cycle_global >= $freeze_limit) {
+		if ($status === 'active') {
 			update(
 				'network_users',
 				[
@@ -149,29 +142,22 @@ function update_bonus_ir($ir, $ir_add, $user)
 		}
 
 		update_network_ir($ir, 0, $user_id);
-	}
-	else
-	{
+	} else {
 		$diff = $freeze_limit - $income_cycle_global;
 
-		if ($diff < $ir_add)
-		{
+		if ($diff < $ir_add) {
 			$flushout_global = $ir_add - $diff;
 
-			if ($user->status_global === 'active')
-			{
+			if ($user->status_global === 'active') {
 				$field_user = ['bonus_indirect_referral = bonus_indirect_referral + ' . $diff];
 
 				$field_user[] = 'status_global = ' . $db->quote('inactive');
 				$field_user[] = 'income_cycle_global = income_cycle_global + ' . cd_filter($user_id, $diff);
 				$field_user[] = 'income_flushout = income_flushout + ' . $flushout_global;
 
-				if (settings('ancillaries')->withdrawal_mode === 'standard')
-				{
+				if (settings('ancillaries')->withdrawal_mode === 'standard') {
 					$field_user[] = 'balance = balance + ' . cd_filter($user_id, $diff);
-				}
-				else
-				{
+				} else {
 					$field_user[] = 'payout_transfer = payout_transfer + ' . cd_filter($user_id, $diff);
 				}
 
@@ -184,19 +170,14 @@ function update_bonus_ir($ir, $ir_add, $user)
 
 			update_network_ir($ir, $diff, $user_id);
 			log_activity($diff, $user_id, $sponsor_id, $username);
-		}
-		else
-		{
+		} else {
 			$field_user = ['bonus_indirect_referral = bonus_indirect_referral + ' . $ir_add];
 
 			$field_user[] = 'income_cycle_global = income_cycle_global + ' . cd_filter($user_id, $ir_add);
 
-			if (settings('ancillaries')->withdrawal_mode === 'standard')
-			{
+			if (settings('ancillaries')->withdrawal_mode === 'standard') {
 				$field_user[] = 'balance = balance + ' . cd_filter($user_id, $ir_add);
-			}
-			else
-			{
+			} else {
 				$field_user[] = 'payout_transfer = payout_transfer + ' . cd_filter($user_id, $ir_add);
 			}
 
@@ -251,12 +232,9 @@ function update_user($bonus_ir_new, $ir_add, $user_id)
 {
 	$field_user = ['bonus_indirect_referral = bonus_indirect_referral + ' . $ir_add];
 
-	if (settings('ancillaries')->withdrawal_mode === 'standard')
-	{
+	if (settings('ancillaries')->withdrawal_mode === 'standard') {
 		$field_user[] = 'balance = balance + ' . $bonus_ir_new;
-	}
-	else
-	{
+	} else {
 		$field_user[] = 'payout_transfer = payout_transfer + ' . $bonus_ir_new;
 	}
 
@@ -382,20 +360,16 @@ function user_indirect($user_id)
 function level(array $lvl_1 = []): array
 {
 	$lvl_2 = [];
-	$type  = [];
+	$type = [];
 
-	if (!empty($lvl_1))
-	{
-		foreach ($lvl_1 as $head)
-		{
+	if (!empty($lvl_1)) {
+		foreach ($lvl_1 as $head) {
 			$user_direct = user_direct($head);
 
-			if ($user_direct)
-			{
-				foreach ($user_direct as $body)
-				{
+			if ($user_direct) {
+				foreach ($user_direct as $body) {
 					$lvl_2[] = $body->id;
-					$type[]  = $body->account_type . (!empty(user_cd($body->id)) ? '_cd' : '');
+					$type[] = $body->account_type . (!empty(user_cd($body->id)) ? '_cd' : '');
 				}
 			}
 		}
@@ -423,8 +397,7 @@ function nested($level, $user_id): array
 {
 	$result[] = level([$user_id]);
 
-	for ($i_i = 2; $i_i <= $level; $i_i++)
-	{
+	for ($i_i = 2; $i_i <= $level; $i_i++) {
 		$last = array_reverse($result)[0];
 
 		$result[] = level($last[0]);
@@ -448,16 +421,14 @@ function get($indirects, $head_account_type, $level)
 
 	$sir = settings('indirect_referral');
 
-	$head_share = $sir->{$head_account_type . '_indirect_referral_share_' . $level};
+	// $head_share = $sir->{$head_account_type . '_indirect_referral_share_' . $level};
 
-	if (count($indirects) > 0)
-	{
-		foreach ($indirects as $account_type)
-		{
+	if (count($indirects) > 0) {
+		foreach ($indirects as $account_type) {
 			$indirect_share = $sir->{$account_type . '_indirect_referral_share_' . $level};
 
-			$share = is_cd($account_type) ? 0 :
-				($indirect_share < $head_share ? $indirect_share : $head_share);
+			$share = is_cd($account_type) ? 0 : $indirect_share;
+			// ($indirect_share < $head_share ? $indirect_share : $head_share);
 
 			$indirect_referral += $share;
 		}
@@ -479,7 +450,7 @@ function bonus($head_account_type, $indirects, $ctr): array
 {
 	return [
 		'member' => count($indirects[0]),
-		'bonus'  => get($indirects[1], $head_account_type, $ctr)
+		'bonus' => get($indirects[1], $head_account_type, $ctr)
 	];
 }
 
@@ -499,23 +470,22 @@ function total($user_id): array
 	$type_level = $sir->{$head_account_type . '_indirect_referral_level'};
 
 	$member = 0;
-	$bonus  = 0;
+	$bonus = 0;
 
 	$ctr = 1;
 
 	$results = nested($type_level, $user_id);
 
-	foreach ($results as $result)
-	{
+	foreach ($results as $result) {
 		$member += count($result[0]);
-		$bonus  += get($result[1], $head_account_type, $ctr);
+		$bonus += get($result[1], $head_account_type, $ctr);
 
 		$ctr++;
 	}
 
 	return [
 		'member' => $member,
-		'bonus'  => $bonus
+		'bonus' => $bonus
 	];
 }
 
@@ -528,9 +498,9 @@ function total($user_id): array
  */
 function view($user_id): string
 {
-	$sa  = settings('ancillaries');
-	$sp  = settings('plans');
-	$se  = settings('entry');
+	$sa = settings('ancillaries');
+	$sp = settings('plans');
+	$se = settings('entry');
 	$sir = settings('indirect_referral');
 
 	$user = user($user_id);
@@ -543,8 +513,7 @@ function view($user_id): string
 
 	$type_level = $sir->{$head_account_type . '_indirect_referral_level'};
 
-	if ($type_level && $head_account_type !== 'starter')
-	{
+	if ($type_level && $head_account_type !== 'starter') {
 		$str .= '<h3>' . $sp->indirect_referral_name . '</h3>';
 		$str .= '<table class="category table table-striped table-bordered table-hover">';
 		$str .= '<thead>';
@@ -574,10 +543,9 @@ function view($user_id): string
 
 		$ctr = 1;
 
-		foreach ($results as $result)
-		{
+		foreach ($results as $result) {
 			$member = bonus($head_account_type, $result, $ctr)['member'];
-			$bonus  = bonus($head_account_type, $result, $ctr)['bonus'];
+			$bonus = bonus($head_account_type, $result, $ctr)['bonus'];
 
 			$str .= '<tr>';
 
@@ -621,7 +589,7 @@ function view($user_id): string
 		$user_indirect = user_indirect($user_id);
 
 		$flushout_global = $user_indirect->flushout_global;
-		$flushout_local  = $user_indirect->flushout_local;
+		$flushout_local = $user_indirect->flushout_local;
 
 		$str .= '<tr>';
 		$str .= '<td>';
@@ -633,7 +601,9 @@ function view($user_id): string
 		$str .= '<td>';
 		$str .= '<div style="text-align: center">' .
 			number_format(/*total($user_id)['bonus']*/
-				($user->bonus_indirect_referral - $flushout_global - $flushout_local), 8) . '</div>';
+				($user->bonus_indirect_referral - $flushout_global - $flushout_local),
+				8
+			) . '</div>';
 		$str .= '</td>';
 		$str .= '<td>';
 		$str .= '<div style="text-align: center">N/A</div>';
@@ -641,9 +611,7 @@ function view($user_id): string
 		$str .= '</tr>';
 		$str .= '</tbody>';
 		$str .= '</table>';
-	}
-	else
-	{
+	} else {
 		$str .= '<h3 style="alignment: center">Sponsor At Least ' .
 			$sir->{$head_account_type . '_indirect_referral_sponsored'} .
 			' Paid Accounts To Enable Your ' . settings('plans')->indirect_referral_name . '!</h3>';

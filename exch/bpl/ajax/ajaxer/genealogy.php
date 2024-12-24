@@ -86,28 +86,6 @@ function main($type, $user_id, string $plan = 'binary_pair'): string
 }
 
 /**
- *
- * @return string[]
- *
- * @since version
- */
-function plan_attr(): array
-{
-	return [
-		'indirect_referral' => 'bonus_indirect_referral',
-		'unilevel' => 'unilevel',
-		'echelon' => 'bonus_echelon',
-		'binary_pair' => 'income_cycle',
-		'leadership_binary' => 'bonus_leadership',
-		'leadership_passive' => 'bonus_leadership_passive',
-		'matrix' => 'bonus_matrix',
-		'power' => 'bonus_power',
-		'matrix_table' => 'bonus_share',
-		'harvest' => 'bonus_harvest'
-	];
-}
-
-/**
  * @param           $type
  * @param           $user_id
  * @param   string  $plan
@@ -144,8 +122,6 @@ function ajax($type, $user_id, string $plan = 'binary_pair'): string
  */
 function render($type, $user_id, $plan): string
 {
-	$attr = set_attr($plan);
-
 	$str = '
 			/**
 			 * Type definition for a node in the tree structure.
@@ -486,22 +462,7 @@ function render($type, $user_id, $plan): string
 					.html(this.generateTooltipContent(node.data.details));
 			}
 		
-			/**
-			 * Generates HTML content for the tooltip
-			 * @param {Object} details - Node details object
-			 * @returns {string} HTML content for tooltip
-			 * @private
-			*/
-			generateTooltipContent(details) {
-				const { id, account, balance, plan, ' . $attr . '} = details;
-				
-				return `
-					<div><strong>ID:</strong> ${id}</div>
-					<div><strong>Account:</strong> ${account}</div>
-					<div><strong>balance:</strong> ${balance}</div>            
-					<div><strong>${plan}:</strong> ${' . $attr . '}</div>
-				`;
-			}
+			' . tooltipContent($plan) . '
 		
 			/**
 			 * Updates tooltip position on mouse movement
@@ -528,6 +489,54 @@ function render($type, $user_id, $plan): string
 	return $str;
 }
 
+function tooltipContent($plan)
+{
+	$attr = set_attr($plan);
+
+	if (is_array($attr)) {
+		$attrStr = $attr[0] . ', ' . $attr[1];
+
+		$tooltipContent = '
+		/**
+		 * Generates HTML content for the tooltip
+		 * @param {Object} details - Node details object
+		 * @returns {string} HTML content for tooltip
+		 * @private
+		*/
+		generateTooltipContent(details) {
+			const { id, account, balance, ' . $attrStr . '} = details;
+		
+			return `
+				<div><strong>ID:</strong> ${id}</div>
+				<div><strong>Account:</strong> ${account}</div>
+				<div><strong>Balance:</strong> ${balance}</div>            
+				<div><strong>Income:</strong> ${' . $attr[0] . '}</div>
+				<div><strong>Status:</strong> ${' . $attr[1] . '}</div>
+			`;
+		}';
+	} else {
+		$tooltipContent = '
+		/**
+		 * Generates HTML content for the tooltip
+		 * @param {Object} details - Node details object
+		 * @returns {string} HTML content for tooltip
+		 * @private
+		*/
+		generateTooltipContent(details) {
+			const { id, account, balance, plan, ' . $attr . '} = details;
+		
+			return `
+				<div><strong>ID:</strong> ${id}</div>
+				<div><strong>Account:</strong> ${account}</div>
+				<div><strong>Balance:</strong> ${balance}</div>            
+				<div><strong>${plan}:</strong> ${' . $attr . '}</div>
+			`;
+		}';
+	}
+
+	return $tooltipContent;
+}
+
 /**
  * @param $plan
  *
@@ -535,15 +544,37 @@ function render($type, $user_id, $plan): string
  *
  * @since version
  */
-function set_attr($plan): string
+function set_attr($plan)
 {
-	$attr = 'status';
+	// $attr = 'status';
 
 	foreach (plan_attr() as $k => $v) {
-		if ($k === $plan && $v !== 'status') {
+		if ($k === $plan) {
 			$attr = $v;
 		}
 	}
 
 	return $attr;
+}
+
+/**
+ *
+ * @return string[]
+ *
+ * @since version
+ */
+function plan_attr(): array
+{
+	return [
+		'indirect_referral' => 'bonus_indirect_referral',
+		'unilevel' => 'unilevel',
+		'echelon' => 'bonus_echelon',
+		'binary_pair' => ['income_cycle', 'status'],
+		'leadership_binary' => 'bonus_leadership',
+		'leadership_passive' => 'bonus_leadership_passive',
+		'matrix' => 'bonus_matrix',
+		'power' => 'bonus_power',
+		'matrix_table' => 'bonus_share',
+		'harvest' => 'bonus_harvest'
+	];
 }

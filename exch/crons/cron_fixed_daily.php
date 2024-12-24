@@ -39,59 +39,57 @@ function main()
 
 	$fdu = fixed_daily_users();
 
-	if (!empty($fdu))
-	{
-		try
-		{
+	if (!empty($fdu)) {
+		try {
 			$dbh->beginTransaction();
 
-			foreach ($fdu as $fd)
-			{
+			foreach ($fdu as $fd) {
 				$account_type = $fd->account_type;
 
-//                $interval = $si->{$account_type . '_fixed_daily_interval'};
-				$maturity         = $si->{$account_type . '_fixed_daily_maturity'};
+				//                $interval = $si->{$account_type . '_fixed_daily_interval'};
+				$maturity = $si->{$account_type . '_fixed_daily_maturity'};
 				$required_directs = $si->{$account_type . '_fixed_daily_required_directs'};
-				$actual_directs   = directs_valid($fd->user_id);
+				$actual_directs = directs_valid($fd->user_id);
 
-//                $interval = $si->{$fd->account_type . '_fixed_daily_interval'};
+				//                $interval = $si->{$fd->account_type . '_fixed_daily_interval'};
 
 				$principal = $si->{$fd->account_type . '_fixed_daily_principal'};
-//                $principal_cut = $si->{$fd->account_type . '_fixed_daily_principal_cut'} / 100;
+				//                $principal_cut = $si->{$fd->account_type . '_fixed_daily_principal_cut'} / 100;
 
-//                $principal_cut = $principal_cut > 0 ?: 1;
+				//                $principal_cut = $principal_cut > 0 ?: 1;
 
-				$interest      = $si->{$fd->account_type . '_fixed_daily_interest'} / 100;
+				$interest = $si->{$fd->account_type . '_fixed_daily_interest'} / 100;
 				$rate_donation = $si->{$fd->account_type . '_fixed_daily_donation'} / 100;
 
-//                $diff = time() - $fd->date_last_cron;
+				//                $diff = time() - $fd->date_last_cron;
 
-				if ((($required_directs && $actual_directs >= $required_directs) || !$required_directs)
+				if (
+					(($required_directs && $actual_directs >= $required_directs) || !$required_directs)
 					&& !$fd->processing
 					&& $principal > 0
 					&& $fd->day < $maturity
-					/*&& $diff >= $interval*/)
-				{
-//                    $fd->day++;
+					/*&& $diff >= $interval*/
+				) {
+					//                    $fd->day++;
 
-					$daily_raw    = $interest * $principal;
-					$value_now    = $daily_raw * (1 - $rate_donation);
+					$daily_raw = $interest * $principal;
+					$value_now = $daily_raw * (1 - $rate_donation);
 					$donation_new = $daily_raw * $rate_donation;
 
-//                    $principal_new = $principal * /*$principal_cut **/ (1 + $interest * $maturity);
+					//                    $principal_new = $principal * /*$principal_cut **/ (1 + $interest * $maturity);
 //                    $value_now = ($principal_new / $maturity) * (1 - $rate_donation);
 
-//                    $donation_new = ($principal_new / $maturity) * $rate_donation;
+					//                    $donation_new = ($principal_new / $maturity) * $rate_donation;
 
-//                    try {
+					//                    try {
 //                        $dbh->beginTransaction();
 
 					update_fixed_daily($fd, $value_now, $donation_new);
-//					update_user($fd, $value_now, $donation_new);
+					//					update_user($fd, $value_now, $donation_new);
 
-//					logs($user, $value_now);
+					//					logs($user, $value_now);
 
-//                        $dbh->commit();
+					//                        $dbh->commit();
 //                    } catch (Exception $e) {
 //                        try {
 //                            $dbh->rollback();
@@ -102,18 +100,13 @@ function main()
 			}
 
 			mature();
-			leadership_fixed_daily();
+			// leadership_fixed_daily();
 
 			$dbh->commit();
-		}
-		catch (Exception $e)
-		{
-			try
-			{
+		} catch (Exception $e) {
+			try {
 				$dbh->rollback();
-			}
-			catch (Exception $e2)
-			{
+			} catch (Exception $e2) {
 				echo $e2->getMessage();
 			}
 		}
@@ -161,19 +154,19 @@ function fixed_daily_users()
  */
 function update_fixed_daily($user, $value_now, $donation_new)
 {
-//	$sp = settings('plans');
+	//	$sp = settings('plans');
 //	$sa = settings('ancillaries');
 	$se = settings('entry');
 	$sf = settings('freeze');
 
-//	$saf = $sp->account_freeze;
+	//	$saf = $sp->account_freeze;
 
-	$user_id      = $user->user_id;
+	$user_id = $user->user_id;
 	$account_type = $user->account_type;
 
 	$income_cycle_global = $user->income_cycle_global;
 
-	$entry  = $se->{$account_type . '_entry'};
+	$entry = $se->{$account_type . '_entry'};
 	$factor = $sf->{$account_type . '_percentage'} / 100;
 
 	$freeze_limit = $entry * $factor;
@@ -184,21 +177,19 @@ function update_fixed_daily($user, $value_now, $donation_new)
 	$time->setTimezone(new DateTimeZone('Asia/Manila'));
 	$now = $time->format('U');
 
-	if ($income_cycle_global >= $freeze_limit)
-	{
-//		if ($saf)
+	if ($income_cycle_global >= $freeze_limit) {
+		//		if ($saf)
 //		{
 //			$flushout_global = $value_now;
 
-		if ($status === 'active')
-		{
+		if ($status === 'active') {
 			crud(
 				'UPDATE network_fixed_daily ' .
 				' SET flushout_global = :flushout_global ' .
 				' WHERE fixed_daily_id = :fixed_daily_id',
 				[
 					'flushout_global' => ($user->flushout_global + $value_now),
-					'fixed_daily_id'  => $user->fixed_daily_id
+					'fixed_daily_id' => $user->fixed_daily_id
 				]
 			);
 
@@ -208,26 +199,22 @@ function update_fixed_daily($user, $value_now, $donation_new)
 				'income_flushout = :income_flushout ' .
 				'WHERE id = :id',
 				[
-					'status_global'   => 'inactive',
+					'status_global' => 'inactive',
 					'income_flushout' => ($user->income_flushout + $value_now),
-					'id'              => $user->user_id
+					'id' => $user->user_id
 				]
 			);
 		}
-//		}
-	}
-	else
-	{
+		//		}
+	} else {
 		$diff = $freeze_limit - $income_cycle_global;
 
-		if ($diff < $value_now)
-		{
-//			if ($saf)
+		if ($diff < $value_now) {
+			//			if ($saf)
 //			{
 			$flushout_global = $value_now - $diff;
 
-			if ($status === 'active')
-			{
+			if ($status === 'active') {
 				crud(
 					'UPDATE network_fixed_daily ' .
 					' SET day = :day ' .
@@ -237,12 +224,17 @@ function update_fixed_daily($user, $value_now, $donation_new)
 					', date_last_cron = :date_last_cron ' .
 					' WHERE fixed_daily_id = :fixed_daily_id',
 					[
-						'day'               => ($user->day + 1)
-						, 'value_last'      => ($user->value_last + $diff)
-						, 'flushout_global' => ($user->flushout_global + $flushout_global)
-						, 'time_last'       => $now
-						, 'fixed_daily_id'  => $user->fixed_daily_id
-						, 'date_last_cron'  => time()
+						'day' => ($user->day + 1)
+						,
+						'value_last' => ($user->value_last + $diff)
+						,
+						'flushout_global' => ($user->flushout_global + $flushout_global)
+						,
+						'time_last' => $now
+						,
+						'fixed_daily_id' => $user->fixed_daily_id
+						,
+						'date_last_cron' => time()
 					]
 				);
 
@@ -253,19 +245,17 @@ function update_fixed_daily($user, $value_now, $donation_new)
 					'income_cycle_global = :income_cycle_global ' .
 					'WHERE id = :id',
 					[
-						'status_global'       => 'inactive',
+						'status_global' => 'inactive',
 						'income_cycle_global' => ($user->income_cycle_global + $diff),
-						'income_flushout'     => ($user->income_flushout + $flushout_global),
-						'id'                  => $user->user_id
+						'income_flushout' => ($user->income_flushout + $flushout_global),
+						'id' => $user->user_id
 					]
 				);
 
 				update_user($user, $diff, $donation_new);
 			}
-//			}
-		}
-		else
-		{
+			//			}
+		} else {
 			crud(
 				'UPDATE network_fixed_daily ' .
 				' SET day = :day ' .
@@ -274,11 +264,15 @@ function update_fixed_daily($user, $value_now, $donation_new)
 				', date_last_cron = :date_last_cron ' .
 				' WHERE fixed_daily_id = :fixed_daily_id',
 				[
-					'day'              => ($user->day + 1)
-					, 'value_last'     => ($user->value_last + $value_now)
-					, 'time_last'      => $now
-					, 'fixed_daily_id' => $user->fixed_daily_id
-					, 'date_last_cron' => time()
+					'day' => ($user->day + 1)
+					,
+					'value_last' => ($user->value_last + $value_now)
+					,
+					'time_last' => $now
+					,
+					'fixed_daily_id' => $user->fixed_daily_id
+					,
+					'date_last_cron' => time()
 				]
 			);
 
@@ -288,7 +282,7 @@ function update_fixed_daily($user, $value_now, $donation_new)
 				'WHERE id = :id',
 				[
 					'income_cycle_global' => ($user->income_cycle_global + $value_now),
-					'id'                  => $user->user_id
+					'id' => $user->user_id
 				]
 			);
 
@@ -314,10 +308,10 @@ function update_user($user, $value_now, $donation_new)
 		'fixed_daily_balance = :fixed_daily_balance ' .
 		'WHERE id = :id',
 		[
-			'donation'             => ($user->donation + $donation_new),
+			'donation' => ($user->donation + $donation_new),
 			'fixed_daily_interest' => ($user->fixed_daily_interest + $value_now),
-			'fixed_daily_balance'  => ($user->fixed_daily_balance + $value_now),
-			'id'                   => $user->user_id
+			'fixed_daily_balance' => ($user->fixed_daily_balance + $value_now),
+			'id' => $user->user_id
 		]
 	);
 }
@@ -390,30 +384,21 @@ function mature()
 
 	$results = fixed_daily_users();
 
-	if (!empty($results))
-	{
-		foreach ($results as $result)
-		{
+	if (!empty($results)) {
+		foreach ($results as $result) {
 			$maturity = $si->{$result->account_type . '_fixed_daily_maturity'};
 
-			if ($result->day === $maturity && (int) $result->time_mature === 0)
-			{
-				try
-				{
+			if ($result->day === $maturity && (int) $result->time_mature === 0) {
+				try {
 					$dbh->beginTransaction();
 
 					update_fixed_daily_time_mature($result);
 
 					$dbh->commit();
-				}
-				catch (Exception $e)
-				{
-					try
-					{
+				} catch (Exception $e) {
+					try {
 						$dbh->rollback();
-					}
-					catch (Exception $e2)
-					{
+					} catch (Exception $e2) {
 					}
 				}
 			}
@@ -438,7 +423,7 @@ function update_fixed_daily_time_mature($result)
 		'SET time_mature = :time_mature ' .
 		'WHERE fixed_daily_id = :fixed_daily_id',
 		[
-			'time_mature'    => $now,
+			'time_mature' => $now,
 			'fixed_daily_id' => $result->fixed_daily_id
 		]
 	);
@@ -460,7 +445,7 @@ function directs_valid($user_id)
 		' AND sponsor_id = :sponsor_id',
 		[
 			'account_type' => 'starter',
-			'sponsor_id'   => $user_id
+			'sponsor_id' => $user_id
 		]
 	);
 }
