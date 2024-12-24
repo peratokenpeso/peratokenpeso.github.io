@@ -409,8 +409,8 @@ function view_member($member): string
 		$settings_plans->binary_pair &&
 		binary_all()
 	) {
-		$str .= '<td>' . $user_binary->ctr_left . '</td>';
-		$str .= '<td>' . $user_binary->ctr_right . '</td>';
+		$str .= '<td>' . ($user_binary->ctr_left ?? 'n/a') . '</td>';
+		$str .= '<td>' . ($user_binary->ctr_right ?? 'n/a') . '</td>';
 	}
 
 	// $str .= ($settings_plans->binary_pair && $user_binary && $psv ?
