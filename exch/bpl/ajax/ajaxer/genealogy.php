@@ -13,73 +13,72 @@ namespace BPL\Ajax\Ajaxer\Genealogy;
  */
 function main($type, $user_id, string $plan = 'binary_pair'): string
 {
-	$str = '<link rel=\'stylesheet prefetch\' href=\'https://fonts.googleapis.com/css?family=Roboto\'>';
-	$str .= '<style>
-			/* Scoped CSS to prevent conflicts with external styles */
-			:root {
-				--color-primary: steelblue;
-				--color-secondary: #999;
-				--color-background: #fff;
-				--color-tooltip-bg: rgba(0, 0, 0, 0.7);
-				--color-tooltip-text: #fff;
-			
-				--font-size-base: 0.75rem;
-				/* 12px */
-				--font-family-base: system-ui, -apple-system, sans-serif;
-			
-				--spacing-sm: 0.3125rem;
-				/* 5px */
-				--spacing-md: 0.625rem;
-				/* 10px */
-			
-				--border-radius: 0.3125rem;
-				/* 5px */
-				--stroke-width-large: 3px;
-				--stroke-width-small: 2px;
-			
-				--transition-default: 200ms ease;
-			}
-			
-			#genealogy_' . $type . ' {
-				width: 100%;
-				height: 100%;
-			}
-			
-			/* Node styles */
-			#genealogy_' . $type . ' .node circle {
-				fill: var(--color-background);
-				stroke: var(--color-primary);
-				stroke-width: var(--stroke-width-large);
-			}
-			
-			#genealogy_' . $type . ' .node text {
-				font: var(--font-size-base) var(--font-family-base);
-			}
-			
-			/* Connection line styles */
-			#genealogy_' . $type . ' .link {
-				fill: none;
-				stroke: var(--color-secondary);
-				stroke-width: var(--stroke-width-small);
-			}
-			
-			/* Tooltip */
-			.tooltip {
-				position: absolute;
-				padding: var(--spacing-sm) var(--spacing-md);
-				background-color: var(--color-tooltip-bg);
-				color: var(--color-tooltip-text);
-				border-radius: var(--border-radius);
-				font-size: var(--font-size-base);
-				font-family: var(--font-family-base);
-				pointer-events: none;
-				opacity: 0;
-				transition: opacity var(--transition-default);
-			}	
-		</style>';
-	$str .= '<div id="genealogy_' . $type . '"></div>';
-	$str .= '<div class="tooltip" id="tooltip"></div>';
-	$str .= '<script src="https://d3js.org/d3.v7.min.js"></script>';
+	$str = <<<HTML
+			<link rel='stylesheet prefetch' href='https://fonts.googleapis.com/css?family=Roboto'>
+			<style>
+				/* Scoped CSS to prevent conflicts with external styles */
+				:root {
+					--color-primary: steelblue;
+					--color-secondary: #999;
+					--color-background: #fff;
+					--color-tooltip-bg: rgba(0, 0, 0, 0.7);
+					--color-tooltip-text: #fff;
+
+					--font-size-base: 0.75rem; /* 12px */
+					--font-family-base: system-ui, -apple-system, sans-serif;
+
+					--spacing-sm: 0.3125rem; /* 5px */
+					--spacing-md: 0.625rem; /* 10px */
+
+					--border-radius: 0.3125rem; /* 5px */
+					--stroke-width-large: 3px;
+					--stroke-width-small: 2px;
+
+					--transition-default: 200ms ease;
+				}
+
+				#genealogy_{$type} {
+					width: 100%;
+					height: 100%;
+				}
+
+				/* Node styles */
+				#genealogy_{$type} .node circle {
+					fill: var(--color-background);
+					stroke: var(--color-primary);
+					stroke-width: var(--stroke-width-large);
+				}
+
+				#genealogy_{$type} .node text {
+					font: var(--font-size-base) var(--font-family-base);
+				}
+
+				/* Connection line styles */
+				#genealogy_{$type} .link {
+					fill: none;
+					stroke: var(--color-secondary);
+					stroke-width: var(--stroke-width-small);
+				}
+
+				/* Tooltip */
+				.tooltip {
+					position: absolute;
+					padding: var(--spacing-sm) var(--spacing-md);
+					background-color: var(--color-tooltip-bg);
+					color: var(--color-tooltip-text);
+					border-radius: var(--border-radius);
+					font-size: var(--font-size-base);
+					font-family: var(--font-family-base);
+					pointer-events: none;
+					opacity: 0;
+					transition: opacity var(--transition-default);
+				}   
+			</style>
+			<div id="genealogy_{$type}"></div>
+			<div class="tooltip" id="tooltip"></div>
+			<script src="https://d3js.org/d3.v7.min.js"></script>
+		HTML;
+
 	$str .= '<script>' . render($type, $user_id, $plan) . '</script>';
 
 	return $str;
@@ -96,19 +95,21 @@ function main($type, $user_id, string $plan = 'binary_pair'): string
  */
 function ajax($type, $user_id, string $plan = 'binary_pair'): string
 {
-	return 'jQuery.ajax({
-			type: "post",
-			dataType: "json",
-			url: "bpl/ajax/action.php",
-			data: {
-				"action": "genealogy_' . $type . '",
-				"id_user": ' . $user_id . ',
-				"plan": "' . $plan . '"
-			},
-			success: function (data) {
-				const treeVis = new TreeVisualization("#genealogy_' . $type . '", data);
-			}
-		});';
+	return <<<JS
+			jQuery.ajax({
+				type: "post",
+				dataType: "json",
+				url: "bpl/ajax/action.php",
+				data: {
+					"action": "genealogy_{$type}",
+					"id_user": {$user_id},
+					"plan": "{$plan}"
+				},
+				success: function (data) {
+					const treeVis = new TreeVisualization("#genealogy_{$type}", data);
+				}
+			});
+		JS;
 }
 
 /**
