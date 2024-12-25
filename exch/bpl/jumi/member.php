@@ -770,8 +770,10 @@ function member($user_id): string
 		//		}
 	}
 
-	$str .= '<h2>Dashboard</h2>
-    <table class="category table table-striped table-bordered table-hover" style="width: 100%;">';
+	$str .= '<h2>Dashboard</h2>';
+	$str .= '<div class="card">
+		<div class="table-responsive">';
+	$str .= '<table class="category table table-striped table-bordered table-hover" style="width: 100%;">';
 
 	$str .= core($user_id);
 
@@ -782,8 +784,10 @@ function member($user_id): string
 
 function user_info($user): string
 {
-	$str = '<h3>Rewards Summary</h3>';
-
+	// $str = '<h3>Rewards Summary</h3>';
+	$str = '<div class="card">
+		<div class="card-header">User Info</div>
+			<div class="table-responsive">';
 	$str .= '<table class="category table table-striped table-bordered table-hover">';
 
 	$str .= row_referral_link($user);
@@ -791,11 +795,25 @@ function user_info($user): string
 	//$str .= row_account_type($user);
 //	$str .= row_balance($user);
 	//$str .= row_efund($user);
-	$str .= row_points($user);
-	$str .= row_daily_incentive($user);
-	$str .= row_merchant($user);
-
 	$str .= '</table>';
+	$str .= '</div></div>';
+
+	$row_points = row_points($user);
+	$row_daily_incentive = row_daily_incentive($user);
+	$row_merchant = row_merchant($user);
+
+	if ($row_points || $row_daily_incentive || $row_merchant) {
+		$str .= '<div class="card">
+			<div class="card-header">Rewards Summary</div>
+				<div class="table-responsive">';
+
+		$str .= row_points($user);
+		$str .= row_daily_incentive($user);
+		$str .= row_merchant($user);
+
+		$str .= '</table>';
+		$str .= '</div></div></div>';
+	}
 
 	return $str;
 }
@@ -830,10 +848,88 @@ function core($user_id): string
 	//	$str .= row_savings($user_id);
 //	$str .= row_loans($user_id);
 	$str .= '</table>';
+	$str .= '</div></div>';
 
 	$str .= table_binary_summary($user_id);
 
+	$str .= tableStyle();
+
 	return $str;
+}
+
+function tableStyle(): string
+{
+	return <<<HTML
+		<style>
+			.card {
+				background: white;
+				border-radius: 8px;
+				box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+				margin-bottom: 20px;
+			}
+
+			.card-header {
+				background: #1a1a1a;
+				color: #ffffff;
+				padding: 15px 20px;
+				border-bottom: 1px solid #2d2d2d;
+				border-radius: 8px 8px 0 0;
+				font-size: 1.17em;
+				font-weight: bold;
+			}
+
+			.table-responsive {
+				overflow-x: auto;
+				-webkit-overflow-scrolling: touch;
+			}
+
+			table {
+				width: 100%;
+				border-collapse: collapse;
+				margin-bottom: 0;
+			}
+
+			.table-striped tbody tr:nth-of-type(odd) {
+				background-color: rgba(0,0,0,.05);
+			}
+
+			.table-bordered {
+				border: 1px solid #dee2e6;
+			}
+
+			th, td {
+				padding: 12px;
+				border: 1px solid #dee2e6;
+			}
+
+			a {
+				color: #007bff;
+				text-decoration: none;
+			}
+
+			a:hover {
+				text-decoration: underline;
+			}
+
+			/* Mobile responsiveness */
+			@media screen and (max-width: 768px) {
+				.rewards-table td {
+					display: block;
+					width: 100%;
+					box-sizing: border-box;
+				}
+
+				.rewards-table td:first-child {
+					font-weight: bold;
+					background: #f8f9fa;
+				}
+
+				.rewards-table td a {
+					word-break: break-all;
+				}
+			}
+		</style>
+	HTML;
 }
 
 //function user_info($user): string
@@ -1112,9 +1208,9 @@ function row_direct_referral($user_id): string
 		$settings_ancillaries->referral_mode === 'standard'
 	) {
 		$str .= '<tr>
-	            <td><a href="javascript:void(0)">Sponsored Members</a>:</td>
-	            <td>' . count(user_direct($user_id)) . '<a style="float:right" href="' .
-			sef(13) . '">View All Sponsored Members</a>
+	            <td><a href="' . sef(13) . '">Sponsored Members</a>:</td>
+	            <td>' . count(user_direct($user_id)) . /* '<a style="float:right" href="' .
+sef(13) . '">View All Sponsored Members</a>' . */ '
 	            </td>
 	        </tr>
 	        <tr>
@@ -1612,7 +1708,7 @@ function row_savings($user_id): string
 'balance' : 'payout_transfer'*/ 'share_fund';
 
 	/*$reactivate = $user->status_global === 'active' ? '' :
-						  '<a style="float:right" href="' . sef(130) . '">Reactivate Account</a>';*/
+																																												   '<a style="float:right" href="' . sef(130) . '">Reactivate Account</a>';*/
 
 	return '<tr>
 	        <td><a href="javascript:void(0)">' . $sa->share_fund_name . '</a>:</td>
@@ -1641,7 +1737,7 @@ function row_loans($user_id): string
 'balance' : 'payout_transfer'*/ 'loans';
 
 	/*$reactivate = $user->status_global === 'active' ? '' :
-						  '<a style="float:right" href="' . sef(130) . '">Reactivate Account</a>';*/
+																																												   '<a style="float:right" href="' . sef(130) . '">Reactivate Account</a>';*/
 
 	return '<tr>
 	        <td><a href="javascript:void(0)">Loans</a>:</td>
@@ -1668,13 +1764,16 @@ function table_binary_summary($user_id): string
 	$str = '';
 
 	if ($binary && ($sp->binary_pair || $sp->redundant_binary)) {
-		$str .= '<hr class="uk-grid-divider">
-		    <h3>' . $sp->binary_pair_name . ' Summary</h3>
-		    <table class="category table table-striped table-bordered table-hover">
+		// $str .= '<hr class="uk-grid-divider">';
+		// $str .= '<h3>' . $sp->binary_pair_name . ' Summary</h3>';
+		$str .= '<div class="card">
+			<div class="card-header">' . $sp->binary_pair_name . ' Summary</div>
+        		<div class="table-responsive">';
+		$str .= '<table class="category table table-striped table-bordered table-hover">
 		        <tr>
-		            <td>Group Points (A/B):</td>
+		            <td><a href="' . sef(14) . '">Group Points (A/B):</a></td>
 		            <td>' . $binary->ctr_left . ' / ' .
-			$binary->ctr_right . '<a style="float:right" href="' . sef(14) . '">View All Downlines</a>
+			$binary->ctr_right . /* '<a style="float:right" href="' . sef(14) . '">View All Downlines</a>' . */ '
 		            </td>
 		        </tr>
 		        <tr>
@@ -1700,6 +1799,7 @@ function table_binary_summary($user_id): string
 	        </tr>' : '';
 
 		$str .= '</table>';
+		$str .= '</div></div>';
 	}
 
 	return $str;

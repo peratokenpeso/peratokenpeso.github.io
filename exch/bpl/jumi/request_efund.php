@@ -481,6 +481,10 @@ function view_method_select($user_id): string
 
 	if (!empty($pmu)) {
 		foreach ($pmu as $k => $v) {
+			if ($k === 'peso') {
+				$str .= '<option value="' . $k . '">' . strtoupper($k) . '</option>';
+			}
+
 			if ($k === 'busd') {
 				$str .= '<option value="' . $k . '">' . strtoupper($k) . '</option>';
 			}

@@ -50,18 +50,18 @@ main();
  */
 function main()
 {
-	$username     = session_get('username');
-	$usertype     = session_get('usertype');
-	$admintype    = session_get('admintype');
+	$username = session_get('username');
+	$usertype = session_get('usertype');
+	$admintype = session_get('admintype');
 	$account_type = session_get('account_type');
-	$user_id      = session_get('user_id');
+	$user_id = session_get('user_id');
 
 	$amount = input_get('amount');
 	$method = input_get('method');
-	$cid    = input_get('cid');
-	$fdp    = session_get('fdp');
-	$ftk    = session_get('ftk');
-	$lpd    = session_get('lpd');
+	$cid = input_get('cid');
+	$fdp = session_get('fdp');
+	$ftk = session_get('ftk');
+	$lpd = session_get('lpd');
 
 	page_validate();
 
@@ -77,68 +77,70 @@ function main()
 
 	$currency = $sa->currency;
 
-	if (empty($arr_payment_method))
-	{
-		$app->redirect(Uri::root(true) . '/' . sef(60) . qs() . 'uid=' . $user_id,
-			'Please Fill Up Your Payment Method.', 'error');
+	if (empty($arr_payment_method)) {
+		$app->redirect(
+			Uri::root(true) . '/' . sef(60) . qs() . 'uid=' . $user_id,
+			'Please Fill Up Your Payment Method.',
+			'error'
+		);
 	}
 
-	if (($currency === 'PHP') && !array_key_exists('gcash', $arr_payment_method)
-		&& !array_key_exists('bank', $arr_payment_method))
-	{
-		$app->redirect(Uri::root(true) . '/' . sef(60) . qs() . 'uid=' . $user_id,
-			'Please Fill Up Your G-Cash or Bank Details.', 'error');
+	if (
+		($currency === 'PHP') && !array_key_exists('gcash', $arr_payment_method)
+		&& !array_key_exists('bank', $arr_payment_method)
+	) {
+		$app->redirect(
+			Uri::root(true) . '/' . sef(60) . qs() . 'uid=' . $user_id,
+			'Please Fill Up Your G-Cash or Bank Details.',
+			'error'
+		);
 	}
 
-	if ($currency === 'USD' && !array_key_exists('bank', $arr_payment_method))
-	{
-		$app->redirect(Uri::root(true) . '/' . sef(60) . qs() . 'uid=' . $user_id,
-			'Please Fill Up Your Bank Details.', 'error');
+	if ($currency === 'USD' && !array_key_exists('bank', $arr_payment_method)) {
+		$app->redirect(
+			Uri::root(true) . '/' . sef(60) . qs() . 'uid=' . $user_id,
+			'Please Fill Up Your Bank Details.',
+			'error'
+		);
 	}
 
-	if (!in_array($currency, ['PHP', 'USD']))
-	{
-		if (!array_key_exists(strtolower($currency), $arr_payment_method))
-		{
-			$app->redirect(Uri::root(true) . '/' . sef(60) . qs() . 'uid=' . $user_id,
-				'Please Fill Up Your ' . $currency . ' Payment Method.', 'error');
+	if (!in_array($currency, ['PHP', 'USD'])) {
+		if (!array_key_exists(strtolower($currency), $arr_payment_method)) {
+			$app->redirect(
+				Uri::root(true) . '/' . sef(60) . qs() . 'uid=' . $user_id,
+				'Please Fill Up Your ' . $currency . ' Payment Method.',
+				'error'
+			);
 		}
 	}
 
-	if (((double) $user->converted_today + (double) $amount) > $sa->{$user->account_type . '_max_convert_usd'})
-	{
-		$app->redirect(Uri::root(true) . '/' . sef(57) . qs() . 'uid=' . $user_id,
-			'Exceeded Maximum Withdrawal Amount!', 'error');
+	if (((double) $user->converted_today + (double) $amount) > $sa->{$user->account_type . '_max_convert_usd'}) {
+		$app->redirect(
+			Uri::root(true) . '/' . sef(57) . qs() . 'uid=' . $user_id,
+			'Exceeded Maximum Withdrawal Amount!',
+			'error'
+		);
 	}
 
-	if ($cid !== '')
-	{
+	if ($cid !== '') {
 		process_cancel_conversion($cid);
 	}
 
-	if ($fdp !== '')
-	{
-		$mode  = 'fdp';
+	if ($fdp !== '') {
+		$mode = 'fdp';
 		$value = $fdp;
-	}
-	elseif ($ftk !== '')
-	{
-		$mode  = 'ftk';
+	} elseif ($ftk !== '') {
+		$mode = 'ftk';
 		$value = $ftk;
-	}
-	elseif ($lpd !== '')
-	{
-		$mode  = 'lpd';
+	} elseif ($lpd !== '') {
+		$mode = 'lpd';
 		$value = $lpd;
-	}
-	else
-	{
-		$mode  = 'sop';
+	} else {
+		$mode = 'sop';
 		$value = '';
 	}
 
-	if ($amount !== '')
-	{
+	if ($amount !== '') {
 		process_conversion($user_id, $amount, $method, $mode);
 	}
 
@@ -154,8 +156,7 @@ function process_cancel_conversion($cid)
 
 	$eec = entry_efund_convert($cid);
 
-	try
-	{
+	try {
 		$db->transactionStart();
 
 		$update = update(
@@ -168,8 +169,7 @@ function process_cancel_conversion($cid)
 			['id = ' . db()->quote($eec->user_id)]
 		);
 
-		if ($update)
-		{
+		if ($update) {
 			delete(
 				'network_efund_convert',
 				['convert_id = ' . db()->quote($cid)]
@@ -177,16 +177,17 @@ function process_cancel_conversion($cid)
 		}
 
 		$db->transactionCommit();
-	}
-	catch (Exception $e)
-	{
+	} catch (Exception $e) {
 		$db->transactionRollback();
 
 		ExceptionHandler::render($e);
 	}
 
-	application()->redirect(Uri::root(true) . '/' . sef(57),
-		'Transaction canceled!', 'notice');
+	application()->redirect(
+		Uri::root(true) . '/' . sef(57),
+		'Transaction canceled!',
+		'notice'
+	);
 }
 
 /**
@@ -205,8 +206,7 @@ function menu($usertype, $admintype, $account_type, $username, $user_id): string
 {
 	$str = '';
 
-	switch ($usertype)
-	{
+	switch ($usertype) {
 		case 'Admin':
 			$str .= menu_admin($admintype, $account_type, $user_id, $username);
 			break;
@@ -246,80 +246,88 @@ function validate_input($user_id, $amount, $method, $mode)
 
 	$arr_payment_method = arr_payment_method($user);
 
-	if ($mode === 'fdp')
-	{
+	if ($mode === 'fdp') {
 		$fdp_converts = user_efund_convert($user_id, 'fdp');
 
 		$fdp_total = 0;
 
-		if (!empty($fdp_converts))
-		{
-			foreach ($fdp_converts as $fdp)
-			{
+		if (!empty($fdp_converts)) {
+			foreach ($fdp_converts as $fdp) {
 				$fdp_total += $fdp->amount;
 			}
 		}
 
-		if ($user->fixed_daily_balance < ($fdp_total + $amount))
-		{
+		if ($user->fixed_daily_balance < ($fdp_total + $amount)) {
 			session_set('fdp', '');
 
-			$app->redirect(Uri::root(true) . '/' . sef(57),
-				settings('plans')->fixed_daily_name . ' Balance exceeded!', 'error');
+			$app->redirect(
+				Uri::root(true) . '/' . sef(57),
+				settings('plans')->fixed_daily_name . ' Balance exceeded!',
+				'error'
+			);
 		}
 	}
 
-	if ($mode === 'ftk')
-	{
+	if ($mode === 'ftk') {
 		$ftk_converts = user_efund_convert($user_id, 'ftk');
 
 		$ftk_total = 0;
 
-		if (!empty($ftk_converts))
-		{
-			foreach ($ftk_converts as $ftk)
-			{
+		if (!empty($ftk_converts)) {
+			foreach ($ftk_converts as $ftk) {
 				$ftk_total += $ftk->amount;
 			}
 		}
 
-		if ($user->fast_track_balance < ($ftk_total + $amount))
-		{
+		if ($user->fast_track_balance < ($ftk_total + $amount)) {
 			session_set('ftk', '');
 
-			$app->redirect(Uri::root(true) . '/' . sef(57),
-				settings('plans')->fast_track_name . ' Balance exceeded!', 'error');
+			$app->redirect(
+				Uri::root(true) . '/' . sef(57),
+				settings('plans')->fast_track_name . ' Balance exceeded!',
+				'error'
+			);
 		}
 	}
 
-	if (empty($method) || $method === 'none')
-	{
-		$app->redirect(Uri::root(true) . '/' . sef(57),
-			'Please Select Method!', 'error');
+	if (empty($method) || $method === 'none') {
+		$app->redirect(
+			Uri::root(true) . '/' . sef(57),
+			'Please Select Method!',
+			'error'
+		);
 	}
 
-	if (empty($arr_payment_method) || empty($arr_payment_method[$method]))
-	{
-		$app->redirect(Uri::root(true) . '/' . sef(60) . qs() . 'uid=' . $user_id,
-			'Your Wallet Address for ' . strtoupper($method) . ' is Required.', 'error');
+	if (empty($arr_payment_method) || empty($arr_payment_method[$method])) {
+		$app->redirect(
+			Uri::root(true) . '/' . sef(60) . qs() . 'uid=' . $user_id,
+			'Your Wallet Address for ' . strtoupper($method) . ' is Required.',
+			'error'
+		);
 	}
 
-	if ($amount <= 0)
-	{
-		$app->redirect(Uri::root(true) . '/' . sef(57),
-			'Please enter valid amount!', 'error');
+	if ($amount <= 0) {
+		$app->redirect(
+			Uri::root(true) . '/' . sef(57),
+			'Please enter valid amount!',
+			'error'
+		);
 	}
 
-	if (((double) $amount + (double) $sa->processing_fee) > $efund_balance)
-	{
-		$app->redirect(Uri::root(true) . '/' . sef(57),
-			'Not enough ' . $sa->currency . ' to cover your gas fee!', 'error');
+	if (((double) $amount + (double) $sa->processing_fee) > $efund_balance) {
+		$app->redirect(
+			Uri::root(true) . '/' . sef(57),
+			'Not enough ' . $sa->currency . ' to cover your gas fee!',
+			'error'
+		);
 	}
 
-	if ($amount < $min_efund_convert)
-	{
-		$app->redirect(Uri::root(true) . '/' . sef(57),
-			'Minimum withdrawal amount is ' . $min_efund_convert . '.', 'error');
+	if ($amount < $min_efund_convert) {
+		$app->redirect(
+			Uri::root(true) . '/' . sef(57),
+			'Minimum withdrawal amount is ' . $min_efund_convert . '.',
+			'error'
+		);
 	}
 }
 
@@ -361,9 +369,9 @@ function insert_convert($user_id, $amount, $cut, $price, $method, string $mode =
 	);
 }
 
-function update_user($value, $user_id/*, $mode = 'sop'*/, $cut)
+function update_user($value, $user_id/*, $mode = 'sop'*/ , $cut)
 {
-//	if ($mode === 'fdp')
+	//	if ($mode === 'fdp')
 //	{
 //		update(
 //			'network_users',
@@ -391,20 +399,18 @@ function update_user($value, $user_id/*, $mode = 'sop'*/, $cut)
 			'id = ' . db()->quote($user_id)
 		]
 	);
-//	}
+	//	}
 
-	if ($update)
-	{
+	if ($update) {
 		$sa = settings('ancillaries');
 
-		$user         = user($user_id);
+		$user = user($user_id);
 		$account_type = $user->account_type;
-		$savings      = $user->savings;
+		$savings = $user->savings;
 
 		$target = $sa->{$account_type . '_savings_target'};
 
-		if ($savings >= $target)
-		{
+		if ($savings >= $target) {
 			update(
 				'network_users',
 				['savings = ' . db()->quote(0)],
@@ -427,17 +433,14 @@ function php_price_usd()
 
 	$data = [];
 
-	try
-	{
+	try {
 		$json = /*!in_array('curl', get_loaded_extensions()) || is_localhost() ?
-			*/
+		   */
 			@file_get_contents($url)/* : file_get_contents_curl($url)*/
 		;
 
 		$data = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
-	}
-	catch (Exception $e)
-	{
+	} catch (Exception $e) {
 
 	}
 
@@ -446,15 +449,13 @@ function php_price_usd()
 
 function price_token_method($value, $method)
 {
-	if (in_array($method, ['bank', 'gcash', 'maya']))
-	{
+	if (in_array($method, ['bank', 'gcash', 'maya'])) {
 		$php_price_usd = php_price_usd();
 
 		$price_php = 0;
 
-		if ($php_price_usd && isset($php_price_usd['tether']['php']))
-		{
-//            $ask = $php_price_usd['market']['ask'];
+		if ($php_price_usd && isset($php_price_usd['tether']['php'])) {
+			//            $ask = $php_price_usd['market']['ask'];
 //            $bid = $php_price_usd['market']['bid'];
 //
 //            $price_php = ($ask + $bid) / 2;
@@ -463,19 +464,14 @@ function price_token_method($value, $method)
 		}
 
 		$price_res = $price_php; // PHP
-	}
-	else
-	{
+	} else {
 		$currency = strtoupper($method);
 
-		if (in_array($currency, ['B2P', 'AET', 'TPAY', /*'BTC3', 'BTCB', 'BTCW', 'GOLD', 'PAC', 'P2P',*/ 'PESO']))
-		{
+		if (in_array($currency, ['B2P', 'AET', 'TPAY', /*'BTC3', 'BTCB', 'BTCW', 'GOLD', 'PAC', 'P2P',*/ 'PESO'])) {
 			$price_res = 1 / price_coinbrain($currency);
-		}
-		else
-		{
+		} else {
 			$price_method = token_price($currency)['price'];
-			$price_base   = token_price('USDT')['price'];
+			$price_base = token_price('USDT')['price'];
 
 			$price_res = $price_base / $price_method;
 		}
@@ -529,7 +525,7 @@ function process_conversion($user_id, $amount, $method, $mode)
 	$amount_cut = $amount * $convert_points_cut / 100; //efund
 
 	$amount_final = $amount - $amount_cut;
-//	$points_cut   = $amount_cut / $convert_points_usd; // set aside for reward points
+	//	$points_cut   = $amount_cut / $convert_points_usd; // set aside for reward points
 
 	$price_total = price_token_method($amount_final, $method);
 
@@ -539,10 +535,8 @@ function process_conversion($user_id, $amount, $method, $mode)
 
 	$str_contact = '';
 
-	if (!empty($contacts))
-	{
-		foreach ($contacts as $k => $v)
-		{
+	if (!empty($contacts)) {
+		foreach ($contacts as $k => $v) {
 			$str_contact .= ucwords($k) . ': ' . $v . '<br>';
 		}
 	}
@@ -558,28 +552,23 @@ function process_conversion($user_id, $amount, $method, $mode)
 		'<br>
 			Payment Method: ' . strtoupper($method) . '<br>';
 
-	try
-	{
+	try {
 		$db->transactionStart();
 
-//		$mode = $fdp === '' ? 'sop' : 'fdp';
+		//		$mode = $fdp === '' ? 'sop' : 'fdp';
 
-		if (insert_convert($user_id, $amount, $amount_cut, $price_total, $method, $mode))
-		{
+		if (insert_convert($user_id, $amount, $amount_cut, $price_total, $method, $mode)) {
 			update_user($amount, $user_id, /*$points_cut*/ $amount_cut);
 
-			if ($mode === 'fdp')
-			{
+			if ($mode === 'fdp') {
 				session_set('fdp', '');
 			}
 
-			if ($mode === 'ftk')
-			{
+			if ($mode === 'ftk') {
 				session_set('ftk', '');
 			}
 
-			if ($mode === 'lpd')
-			{
+			if ($mode === 'lpd') {
 				session_set('lpd', '');
 			}
 		}
@@ -587,16 +576,17 @@ function process_conversion($user_id, $amount, $method, $mode)
 		send_mail($message, 'E-Fund Withdrawal', [$user->email]);
 
 		$db->transactionCommit();
-	}
-	catch (Exception $e)
-	{
+	} catch (Exception $e) {
 		$db->transactionRollback();
 
 		ExceptionHandler::render($e);
 	}
 
-	$app->redirect(Uri::root(true) . '/' . sef(57),
-		'To ensure the security of transactions and for the verification process, withdrawals are processed for six hours to eight hours from twelve midnight to eight in the morning. Please check your e-wallet after the said processing time. Thank you for your consideration.<br> -- "Support Team".', 'success');
+	$app->redirect(
+		Uri::root(true) . '/' . sef(57),
+		'To ensure the security of transactions and for the verification process, withdrawals are processed for six hours to eight hours from twelve midnight to eight in the morning. Please check your e-wallet after the said processing time. Thank you for your consideration.<br> -- "Support Team".',
+		'success'
+	);
 }
 
 /**
@@ -755,67 +745,62 @@ function view_method_select($user_id): string
 	$str = '<select name="method" id="method" style="float:left">';
 	$str .= '<option value="none" selected>Select Method</option>';
 
-	if (!empty($pmu))
-	{
-		foreach ($pmu as $k => $v)
-		{
-//			if ($k === 'gcash')
+	if (!empty($pmu)) {
+		foreach ($pmu as $k => $v) {
+			//			if ($k === 'gcash')
 //			{
 //				$str .= '<option value="' . $k . '">' . strtoupper($k) . '</option>';
 //			}
 
-			if ($k === 'bank')
-			{
+			if ($k === 'bank') {
 				$str .= '<option value="' . $k . '">' . strtoupper($k) . '</option>';
 			}
 
-			if ($k === 'busd')
-			{
+			if ($k === 'busd') {
 				$str .= '<option value="' . $k . '">' . strtoupper($k) . '</option>';
 			}
 
-			if ($k === 'usdt')
-			{
+			if ($k === 'usdt') {
 				$str .= '<option value="' . $k . '">' . strtoupper($k) . '</option>';
 			}
 
-//			if ($k === 'gold')
+			if ($k === 'peso') {
+				$str .= '<option value="' . $k . '">' . strtoupper($k) . '</option>';
+			}
+
+			//			if ($k === 'gold')
 //			{
 //				$str .= '<option value="' . $k . '">' . strtoupper($k) . '</option>';
 //			}
 
-//			if ($k === 'btc3')
+			//			if ($k === 'btc3')
 //			{
 //				$str .= '<option value="' . $k . '">' . strtoupper($k) . '</option>';
 //			}
 
-//			if ($k === 'p2p')
+			//			if ($k === 'p2p')
 //			{
 //				$str .= '<option value="' . $k . '">' . strtoupper($k) . '</option>';
 //			}
 
-			if ($k === 'bnb')
-			{
+			if ($k === 'bnb') {
 				$str .= '<option value="' . $k . '">' . strtoupper($k) . '</option>';
 			}
 
-//			if ($k === 'pac')
+			//			if ($k === 'pac')
 //			{
 //				$str .= '<option value="' . $k . '">' . strtoupper($k) . '</option>';
 //			}
 
-			if ($k === 'b2p')
-			{
+			if ($k === 'b2p') {
 				$str .= '<option value="' . $k . '">' . strtoupper($k) . '</option>';
 			}
 
-			if ($k === 'aet')
-			{
+			if ($k === 'aet') {
 				$str .= '<option value="' . $k . '">' . strtoupper($k) . '</option>';
 			}
 
-			if ($k === 'tpay')
-			{
+			if ($k === 'tpay') {
 				$str .= '<option value="' . $k . '">' . strtoupper($k) . '</option>';
 			}
 		}
@@ -859,12 +844,9 @@ function view_pending_conversions(): string
 
 	$str = '<h2>Pending ' . $efund_name . ' Withdrawals</h2>';
 
-	if (empty($pending))
-	{
+	if (empty($pending)) {
 		$str .= '<hr><p>No pending ' . $efund_name . ' withdrawals yet.</p>';
-	}
-	else
-	{
+	} else {
 		$str .= '<div class="table-responsive">';
 		$str .= '<table class="category table table-striped table-bordered table-hover">';
 		$str .= '<thead>';
@@ -880,14 +862,12 @@ function view_pending_conversions(): string
 		$str .= '</thead>';
 		$str .= '<tbody>';
 
-		foreach ($pending as $tmp)
-		{
+		foreach ($pending as $tmp) {
 			$currency = in_array($tmp->method, ['bank', 'gcash']) ? 'PHP' : $tmp->method;
 
 			$sa = settings('ancillaries');
 
-			switch ($tmp->mode)
-			{
+			switch ($tmp->mode) {
 				case 'fdp':
 					$mode = settings('plans')->fixed_daily_name;
 					break;
@@ -978,8 +958,7 @@ function entry_efund_convert($cid)
 
 function price_coinbrain($token = 'BTC3')
 {
-	switch ($token)
-	{
+	switch ($token) {
 		case 'B2P':
 			$contract = '0xF8AB9fF465C612D5bE6A56716AdF95c52f8Bc72d';
 			break;
@@ -1024,10 +1003,9 @@ function price_coinbrain($token = 'BTC3')
 		coinbrain_price_token('https://api.coinbrain.com/public/coin-info', $data)
 	);
 
-	if (!empty($results))
-	{
+	if (!empty($results)) {
 		$results = (array) $results[0];
-		$price   = $results['priceUsd'];
+		$price = $results['priceUsd'];
 	}
 
 	return $price;

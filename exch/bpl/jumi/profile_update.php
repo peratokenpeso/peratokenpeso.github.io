@@ -41,13 +41,13 @@ main();
  */
 function main()
 {
-	$username     = session_get('username');
-	$usertype     = session_get('usertype');
-	$admintype    = session_get('admintype');
+	$username = session_get('username');
+	$usertype = session_get('usertype');
+	$admintype = session_get('admintype');
 	$account_type = session_get('account_type');
-	$user_id      = session_get('user_id');
-	$uid          = input_get('uid');
-	$final        = input_get('final');
+	$user_id = session_get('user_id');
+	$uid = input_get('uid');
+	$final = input_get('final');
 
 	session_set('edit', false);
 
@@ -55,17 +55,13 @@ function main()
 
 	$str = menu($usertype, $admintype, $account_type, $username, $user_id);
 
-	if ($uid !== '')
-	{
+	if ($uid !== '') {
 		$user_id = $uid;
 	}
 
-	if ($final === '')
-	{
+	if ($final === '') {
 		$str .= view_form($user_id, $admintype, $usertype);
-	}
-	else
-	{
+	} else {
 		process_form($user_id, $usertype, $admintype);
 	}
 
@@ -87,8 +83,7 @@ function menu($usertype, $admintype, $account_type, $username, $user_id): string
 {
 	$str = '';
 
-	switch ($usertype)
-	{
+	switch ($usertype) {
 		case 'Admin':
 			$str .= menu_admin($admintype, $account_type, $user_id, $username);
 			break;
@@ -128,7 +123,7 @@ function view_form($user_id, $admintype, $usertype): string
 	$str .= view_form_admin_access($user_id, $usertype);
 	$str .= view_form_account_info($user_id);
 	$str .= view_form_payment_method($user_id);
-//	$str .= view_form_beneficiary($user_id);
+	//	$str .= view_form_beneficiary($user_id);
 	$str .= view_form_change_password();
 
 	$str .= '<td colspan="2"><div style="text-align: center">
@@ -251,8 +246,7 @@ function view_form_super_access($admintype, $usertype, $user_id): string
 {
 	$str = '';
 
-	if ($admintype === 'Super' && $usertype === 'Admin')
-	{
+	if ($admintype === 'Super' && $usertype === 'Admin') {
 		$user = user($user_id);
 
 		$settings_royalty = settings('royalty');
@@ -311,8 +305,7 @@ function view_form_admin_access($user_id, $usertype): string
 
 	$str = '';
 
-	if ($usertype === 'Admin')
-	{
+	if ($usertype === 'Admin') {
 		$settings_entry = settings('entry');
 
 		$str .= '<tr>
@@ -338,9 +331,7 @@ function view_form_admin_access($user_id, $usertype): string
 		$str .= '</select>
 	        	</td>
 	        </tr>';
-	}
-	else
-	{
+	} else {
 		$str .= '<input type="hidden" name="rank" value="' . $user->rank . '">
         <input type="hidden" name="usertype" value="' . $user->usertype . '">
         <input type="hidden" name="account_type" value="' . $user->account_type . '">';
@@ -362,11 +353,11 @@ function option_country_selected(array $address): string
 
 	return ((array_key_exists(4, $address) && $address[4] !== '') ? (
 
-	$db->setQuery(
-		'SELECT countryName ' .
-		'FROM countries ' .
-		'WHERE idCountry = ' . $db->quote($address[4])
-	)->loadObject()->countryName
+		$db->setQuery(
+			'SELECT countryName ' .
+			'FROM countries ' .
+			'WHERE idCountry = ' . $db->quote($address[4])
+		)->loadObject()->countryName
 
 	) : 'Select a country');
 }
@@ -387,8 +378,7 @@ function options_country(): string
 
 	$str = '';
 
-	foreach ($countries as $country)
-	{
+	foreach ($countries as $country) {
 		$str .= '<option value="' . $country->idCountry . '">' . $country->countryName . '</option>';
 	}
 
@@ -408,7 +398,7 @@ function view_form_account_info($user_id): string
 	$user = user($user_id);
 
 	$str = '<tr>
-        <td colspan="2"><h3 style="margin:0;">Account Info</h3></td>
+        <td colspan="2" style="font-color: #fff; background-color: #999; font-weight: bold"><h3 style="margin:0;">Account Info</h3></td>
     </tr>';
 
 	$str .= '<tr>
@@ -430,39 +420,71 @@ function view_form_account_info($user_id): string
                    required="required"
                    size="40"
                    style="float:left"
-                   readonly><a href="javascript:void(0)" onClick="checkInput(\'username\')"
-                               class="uk-button uk-button-primary"
-                               style="float:left">Check Availability</a>
-            <div style="width:200px; height:20px; font-weight:bold; float:left; padding:7px 0 0 10px;"
-                 id="usernameDiv"></div>
-        </td>
+                   readonly>';
+	// $str .= '<a href="javascript:void(0)" onClick="checkInput(\'username\')"
+	//                            class="uk-button uk-button-primary"
+	//                            style="float:left">Check Availability</a>
+	//         <div style="width:200px; height:20px; font-weight:bold; float:left; padding:7px 0 0 10px;"
+	//              id="usernameDiv"></div>';
+	$str .= '</td>
     </tr>';
 
 	$str .= '<tr>
-        <td>Address:</td>
-        <td>';
+	    <td>Address:</td>
+	    <td>';
 
 	$address = explode('|', $user->address);
 
-	$str .= '<input type="text" name="address_1" size="40" placeholder="House No."
-                value="' . (array_key_exists(0, $address) ? $address[0] : '') . '">';
-	$str .= '<input type="text" name="address_2" placeholder="Street / Road"
-                value="' . (array_key_exists(1, $address) ? $address[1] : '') . '">';
-	$str .= '<input type="text" name="address_3" placeholder="City"
-                value="' . (array_key_exists(2, $address) ? $address[2] : '') . '">';
-	$str .= '<input type="text" name="address_4"  placeholder="State / Region"
-                value="' . (array_key_exists(3, $address) ? $address[3] : '') . '">';
+	// $str .= '<input type="text" name="address_1" size="40" placeholder="House No."
+	//             value="' . (array_key_exists(0, $address) ? $address[0] : '') . '">';
+	// $str .= '<input type="text" name="address_2" placeholder="Street / Road"
+	//             value="' . (array_key_exists(1, $address) ? $address[1] : '') . '">';
+	// $str .= '<input type="text" name="address_3" placeholder="City"
+	//             value="' . (array_key_exists(2, $address) ? $address[2] : '') . '">';
+	// $str .= '<input type="text" name="address_4"  placeholder="State / Region"
+	//             value="' . (array_key_exists(3, $address) ? $address[3] : '') . '">';
+
+	$str .= '<div style="display: flex; flex-direction: column; gap: 10px;">
+            <input 
+                type="text" 
+                name="address_1" 
+                size="40" 
+                placeholder="No." 
+                value="' . htmlspecialchars(array_key_exists(0, $address) ? $address[0] : '') . '" 
+                style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;"
+            >
+            <input 
+                type="text" 
+                name="address_2" 
+                placeholder="Street" 
+                value="' . htmlspecialchars(array_key_exists(1, $address) ? $address[1] : '') . '" 
+                style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;"
+            >
+            <input 
+                type="text" 
+                name="address_3" 
+                placeholder="Municipality" 
+                value="' . htmlspecialchars(array_key_exists(2, $address) ? $address[2] : '') . '" 
+                style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;"
+            >
+            <input 
+                type="text" 
+                name="address_4" 
+                placeholder="Province" 
+                value="' . htmlspecialchars(array_key_exists(3, $address) ? $address[3] : '') . '" 
+                style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;"
+            >';
 	$str .= '<label>
-                <select name="address_5" style="float: left">
-                    <option value="' . (array_key_exists(4, $address) ? $address[4] : '') . '" ' .
+	            <select name="address_5" style="float: left">
+	                <option value="' . (array_key_exists(4, $address) ? $address[4] : '') . '" ' .
 		(array_key_exists(4, $address) && $address[4] !== '' ? 'selected' : 'disabled selected') . '>';
 	$str .= option_country_selected($address);
 	$str .= '</option>';
 	$str .= options_country();
 	$str .= '</select>
-    </label>
-    </td>
-    <tr>';
+	</label></div>
+	</td>
+	<tr>';
 
 	$str .= '<tr>
         <td><label for="email">Email Address:</label></td>
@@ -470,7 +492,7 @@ function view_form_account_info($user_id): string
                    value="' . (!empty($user->email) ? $user->email : '') . '" size="40"></td>
     </tr>';
 
-//	$str .= '<tr>
+	//	$str .= '<tr>
 //        <td><label for="contact">Contact Info:</label></td>
 //        <td><input type="text" name="contact" id="contact" class="uk-width-1-1" size="40"
 //                   value="' . (!empty($user->contact) ? $user->contact : '') . '">
@@ -492,10 +514,36 @@ function view_form_contact($user_id): string
 	$str .= '<td>Contact Info:</td>';
 	$str .= '<td>';
 	$str .= '<select name="contact" id="contact" style="float:left">';
-	$str .= '<option value="messenger">Messenger</option>';
-	$str .= '<option value="mobile">Mobile</option>';
-	$str .= '<option value="landline">Landline</option>';
+	// $str .= '<option value="messenger">Messenger</option>';
+	// $str .= '<option value="mobile">Mobile</option>';
+	// $str .= '<option value="landline">Landline</option>';
+	$str .= '<option value="whatsapp">Whatsapp</option>';
+	$str .= '<option value="telegram">Telegram</option>';
 	$str .= '</select>';
+
+	// whatsapp
+	$whatsappValue = htmlspecialchars($contact['whatsapp'] ?? '', ENT_QUOTES, 'UTF-8');
+
+	$str .= <<<HTML
+		<div id="whatsapp_input">
+			<label>
+				<input type="text" class="uk-width-1-1" name="whatsapp_url" 
+					placeholder="WhatsApp URL" value="$whatsappValue">
+			</label>
+		</div>
+		HTML;
+
+	// telegram
+	$whatsappValue = htmlspecialchars($contact['telegram'] ?? '', ENT_QUOTES, 'UTF-8');
+
+	$str .= <<<HTML
+		<div id="telegram_input">
+			<label>
+				<input type="text" class="uk-width-1-1" name="telegram_url" 
+					placeholder="Telegram URL" value="$whatsappValue">
+			</label>
+		</div>
+		HTML;
 
 	// messenger
 	$str .= '<div id="messenger_input">';
@@ -537,7 +585,7 @@ function view_form_beneficiary($user_id): string
 	$str .= '<td>Beneficiary:</td>';
 	$str .= '<td>';
 	$str .= '<select name="beneficiary" id="beneficiary" style="float:left">';
-//	$str .= '<option value="messenger">Messenger</option>';
+	//	$str .= '<option value="messenger">Messenger</option>';
 	$str .= '<option value="beneficiary_name">Name</option>';
 	$str .= '<option value="beneficiary_contact">Contact</option>';
 	$str .= '</select>';
@@ -586,9 +634,9 @@ function list_token(): array
 		'SOL',
 		'XRP',
 		'TON',
-//		'BTC3',
+		//		'BTC3',
 		'BTCB',
-//		'BTCW',
+		//		'BTCW',
 //		'GOLD',
 //		'PAC',
 //		'P2P',
@@ -605,10 +653,8 @@ function token_options(): string
 
 	$str = '';
 
-	if ($tokens)
-	{
-		foreach ($tokens as $token)
-		{
+	if ($tokens) {
+		foreach ($tokens as $token) {
 			$str .= '<option value="' . strtolower($token) . '"' .
 				/*($token === 'BTC3' ? ' selected' : '') .*/
 				'>' . $token . '</option>';
@@ -627,10 +673,8 @@ function token_inputs($user): string
 
 	$str = '';
 
-	if ($tokens)
-	{
-		foreach ($tokens as $token)
-		{
+	if ($tokens) {
+		foreach ($tokens as $token) {
 			$str .= '<div id="' . strtolower($token) . '_input">';
 			$str .= '<label>';
 			$str .= '<input type="text" class="uk-width-1-1" name="' . strtolower($token) .
@@ -651,10 +695,8 @@ function const_script_token(): string
 
 	$str = '';
 
-	if ($tokens)
-	{
-		foreach ($tokens as $token)
-		{
+	if ($tokens) {
+		foreach ($tokens as $token) {
 			$str .= 'const ' . strtolower($token) . ' = $("#' . strtolower($token) . '_input");';
 			$str .= "\n\n";
 		}
@@ -671,42 +713,30 @@ function fill_payout_method($user)
 
 	$tokens = list_token();
 
-	if ($payout_method === 'bank')
-	{
-		$bank_name      = input_get('bank_name', '', 'RAW');
+	if ($payout_method === 'bank') {
+		$bank_name = input_get('bank_name', '', 'RAW');
 		$account_number = input_get('bank_account_number', '', 'RAW');
 
-		if (!empty($bank_name) && !empty($account_number))
-		{
+		if (!empty($bank_name) && !empty($account_number)) {
 			$payout_method_user['bank'] = [$bank_name => $account_number];
 		}
-	}
-	elseif ($payout_method === 'gcash')
-	{
+	} elseif ($payout_method === 'gcash') {
 		$gcash_number = input_get('gcash_number', '', 'RAW');
 
-		if (!empty($gcash_number))
-		{
+		if (!empty($gcash_number)) {
 			$payout_method_user['gcash'] = $gcash_number;
 		}
-	}
-	elseif ($payout_method === 'maya')
-	{
+	} elseif ($payout_method === 'maya') {
 		$maya_number = input_get('maya_number', '', 'RAW');
 
-		if (!empty($maya_number))
-		{
+		if (!empty($maya_number)) {
 			$payout_method_user['maya'] = $maya_number;
 		}
-	}
-	else if ($tokens)
-	{
-		foreach ($tokens as $token)
-		{
+	} else if ($tokens) {
+		foreach ($tokens as $token) {
 			$strl_token = strtolower($token);
 
-			if ($payout_method === $strl_token)
-			{
+			if ($payout_method === $strl_token) {
 				$payout_method_user[$strl_token] = input_get($strl_token . '_address', '', 'RAW');
 			}
 		}
@@ -721,27 +751,20 @@ function init_script_token_state($show = 'none'): string
 
 	$str = '';
 
-	if ($tokens)
-	{
-		if ($show === 'none')
-		{
-			foreach ($tokens as $token)
-			{
+	if ($tokens) {
+		if ($show === 'none') {
+			foreach ($tokens as $token) {
 				$str .= strtolower($token) . '.hide();';
 				$str .= "\n\n";
 			}
-		}
-		else
-		{
-			if (in_array($show, $tokens))
-			{
+		} else {
+			if (in_array($show, $tokens)) {
 				$str .= strtolower($show) . '.show();';
 				$str .= "\n\n";
 
 				unset($tokens[array_search($show, $tokens)]);
 
-				foreach ($tokens as $token)
-				{
+				foreach ($tokens as $token) {
 					$str .= strtolower($token) . '.hide();';
 					$str .= "\n\n";
 				}
@@ -758,10 +781,8 @@ function case_switch_script(): string
 
 	$str = '';
 
-	if ($tokens)
-	{
-		foreach ($tokens as $token)
-		{
+	if ($tokens) {
+		foreach ($tokens as $token) {
 			$str .= 'case "' . strtolower($token) . '":
                     bank.hide();
 		            bank_name.hide();
@@ -795,21 +816,19 @@ function view_form_payment_method($user_id): string
         <td>';
 
 	$str .= '<select name="payout_method" id="payout_method" style="float:left">';
-//	$str .= '<option selected>Select Currency Method</option>';
+	//	$str .= '<option selected>Select Currency Method</option>';
 	$str .= '<option value="bank">Bank</option>';
 	$str .= '<option value="gcash" selected>G-Cash</option>';
 	$str .= '<option value="maya" selected>MAYA</option>';
 	$str .= token_options();
 	$str .= '</select>';
 
-	$bank_name   = '';
+	$bank_name = '';
 	$account_num = '';
 
-	if (!empty($payment_method['bank']))
-	{
-		foreach ($payment_method['bank'] as $k => $v)
-		{
-			$bank_name   = $k;
+	if (!empty($payment_method['bank'])) {
+		foreach ($payment_method['bank'] as $k => $v) {
+			$bank_name = $k;
 			$account_num = $v;
 		}
 	}
@@ -975,49 +994,77 @@ function script_payment_method(): string
 
 function script_contact_info(): string
 {
-	return '<script>
-	    (function ($) {
-	        toggleContactInfo($);
-	
-	        $("#contact").change(function () {
-	            toggleContactInfo($);
-	        });
-	    })(jQuery);
-	
-	    function toggleContactInfo($) {
-	        const contact = $("#contact");
-	
-	        const messenger = $("#messenger_input");
-            const mobile = $("#mobile_input");           
-            const landline = $("#landline_input");           
-           
-	        messenger.hide();
-            mobile.hide();
-            landline.hide();           
-            
-            switch (contact.val()) {
-                case "messenger":
-                    messenger.show();
-		            mobile.hide();
-		            landline.hide();                    	
-                    
-                	break;
-                case "mobile":
-                    messenger.hide();
-		            mobile.show();
-		            landline.hide();	
-                    
-                	break;
-                case "landline":
-                    messenger.hide();
-		            mobile.hide();
-		            landline.show();	
-                    break;
-            }
-            
-	        return false;
-	    }
-	</script>';
+	return <<<HTML
+		<script>
+			(function ($) {
+				toggleContactInfo($);
+		
+				$("#contact").change(function () {
+					toggleContactInfo($);
+				});
+			})(jQuery);
+		
+			function toggleContactInfo($) {
+				const contact = $("#contact");
+		
+				const whatsapp = $("#whatsapp_input");
+				const telegram = $("#telegram_input");
+				const messenger = $("#messenger_input");
+				const mobile = $("#mobile_input");           
+				const landline = $("#landline_input");           
+			
+				whatsapp.hide();
+				telegram.hide();
+				messenger.hide();
+				mobile.hide();
+				landline.hide();           
+				
+				switch (contact.val()) {
+					case "whatsapp":
+						whatsapp.show();
+						telegram.hide();
+						messenger.hide();
+						mobile.hide();
+						landline.hide();                    	
+						
+						break;
+					case "telegram":
+						whatsapp.hide();
+						telegram.show();
+						messenger.hide();
+						mobile.hide();
+						landline.hide();                    	
+						
+						break;
+					case "messenger":
+						whatsapp.hide();
+						telegram.hide();
+						messenger.show();
+						mobile.hide();
+						landline.hide();                    	
+							
+						break;
+					case "mobile":
+						whatsapp.hide();
+						telegram.hide();
+						messenger.hide();
+						mobile.show();
+						landline.hide();	
+						
+						break;
+					case "landline":
+						whatsapp.hide();
+						telegram.hide();
+						messenger.hide();
+						mobile.hide();
+						landline.show();	
+						break;
+				}
+				
+				return false;
+			}
+		</script>
+	HTML;
 }
 
 function script_beneficiary_info(): string
@@ -1094,12 +1141,9 @@ function process_form($user_id, $usertype, $admintype)
 
 	$edit = session_get('edit', false);
 
-	if ($admintype === 'Super')
-	{
+	if ($admintype === 'Super') {
 		$usertype_edit = input_get('usertype', '', 'RAW');
-	}
-	else
-	{
+	} else {
 		$usertype_edit = $user->usertype;
 	}
 
@@ -1129,38 +1173,48 @@ function process_form($user_id, $usertype, $admintype)
 	$email = input_get('email', '', 'RAW');
 
 	$contact_info_user = arr_contact_info($user);
-	$contact           = input_get('contact', '', 'RAW');
+	$contact = input_get('contact', '', 'RAW');
 
+	$input_whatsapp = input_get('whatsapp_url', '', 'RAW');
+	$input_telegram = input_get('telegram_url', '', 'RAW');
 	$input_messenger = input_get('messenger_url', '', 'RAW');
-	$input_mobile    = input_get('mobile_number', '', 'RAW');
-	$input_landline  = input_get('landline_number', '', 'RAW');
+	$input_mobile = input_get('mobile_number', '', 'RAW');
+	$input_landline = input_get('landline_number', '', 'RAW');
 
-	switch ($contact)
-	{
+	switch ($contact) {
+		case 'whatsapp':
+			if (!empty($input_whatsapp)) {
+				$contact_info_user['whatsapp'] = $input_whatsapp;
+			}
+
+			break;
+		case 'telegram':
+			if (!empty($input_telegram)) {
+				$contact_info_user['telegram'] = $input_telegram;
+			}
+
+			break;
 		case 'messenger':
-			if (!empty($input_messenger))
-			{
+			if (!empty($input_messenger)) {
 				$contact_info_user['messenger'] = $input_messenger;
 			}
 
 			break;
 		case 'mobile':
-			if (!empty($input_mobile))
-			{
+			if (!empty($input_mobile)) {
 				$contact_info_user['mobile'] = $input_mobile;
 			}
 
 			break;
 		case 'landline':
-			if (!empty($input_landline))
-			{
+			if (!empty($input_landline)) {
 				$contact_info_user['landline'] = $input_landline;
 			}
 
 			break;
 	}
 
-//	$beneficiary_info_user = arr_beneficiary_info($user);
+	//	$beneficiary_info_user = arr_beneficiary_info($user);
 //	$beneficiary           = input_get('beneficiary', '', 'RAW');
 //
 //	$beneficiary_name    = input_get('beneficiary_name_input', '', 'RAW');
@@ -1191,36 +1245,30 @@ function process_form($user_id, $usertype, $admintype)
 
 	$date = time();
 
-	if ($edit && $admintype === 'Super')
-	{
+	if ($edit && $admintype === 'Super') {
 		$date = input_get('date', '', 'RAW');
 	}
 
 	$app = application();
 
-	if ($password1 !== '' && $password2 !== '' && $password1 !== $password2)
-	{
+	if ($password1 !== '' && $password2 !== '' && $password1 !== $password2) {
 		$err = 'Your Passwords do not match.';
 
 		$app->redirect(Uri::root(true) . '/' . sef(60) . qs() . 'uid=' . $user_id, $err, 'error');
 	}
 
-	if ($user->username !== $username && user_username($username)->username !== '')
-	{
+	if ($user->username !== $username && user_username($username)->username !== '') {
 		$err = 'Username already in use. Please use another username.';
 
 		$app->redirect(Uri::root(true) . '/' . sef(60) . qs() . 'uid=' . $user_id, $err, 'error');
 	}
 
-	try
-	{
+	try {
 		$db->transactionStart();
 
 		// update
-		if (($admintype === 'Super' && $usertype === 'Admin') /*|| $usertype === 'manager'*/)
-		{
-			if ($password1 !== '' && ($password1 === $password2))
-			{
+		if (($admintype === 'Super' && $usertype === 'Admin') /*|| $usertype === 'manager'*/) {
+			if ($password1 !== '' && ($password1 === $password2)) {
 				$fields = [
 					'`account_type` = ' . $db->quote($account_type),
 					'`rank` = ' . $db->quote($rank),
@@ -1234,9 +1282,7 @@ function process_form($user_id, $usertype, $admintype)
 					'`address` = ' . $db->quote($address)
 				];
 
-			}
-			else
-			{
+			} else {
 				$fields = [
 					'`account_type` = ' . $db->quote($account_type),
 					'`rank` = ' . $db->quote($rank),
@@ -1249,11 +1295,8 @@ function process_form($user_id, $usertype, $admintype)
 					'`address` = ' . $db->quote($address)
 				];
 			}
-		}
-		else
-		{
-			if ($password1 !== '' && ($password1 === $password2))
-			{
+		} else {
+			if ($password1 !== '' && ($password1 === $password2)) {
 				$fields = [
 					'`username` = ' . $db->quote($username),
 					'`fullname` = ' . $db->quote($fullname),
@@ -1265,9 +1308,7 @@ function process_form($user_id, $usertype, $admintype)
 					'`address` = ' . $db->quote($address)
 				];
 
-			}
-			else
-			{
+			} else {
 				$fields = [
 					'`username` = ' . $db->quote($username),
 					'`fullname` = ' . $db->quote($fullname),
@@ -1280,17 +1321,15 @@ function process_form($user_id, $usertype, $admintype)
 			}
 		}
 
-		if ($contact_info_user)
-		{
+		if ($contact_info_user) {
 			$fields[] = '`contact` = ' . $db->quote(json_encode($contact_info_user));
 		}
 
-		if ($payout_method_user)
-		{
+		if ($payout_method_user) {
 			$fields[] = '`payment_method` = ' . $db->quote(json_encode($payout_method_user));
 		}
 
-//		if ($beneficiary_info_user)
+		//		if ($beneficiary_info_user)
 //		{
 //			$fields[] = '`beneficiary` = ' . $db->quote(json_encode($beneficiary_info_user));
 //		}
@@ -1304,27 +1343,22 @@ function process_form($user_id, $usertype, $admintype)
 		);
 
 		// activity
-		if ($usertype === 'Admin' || $usertype === 'manager' || $admintype === 'Super')
-		{
+		if ($usertype === 'Admin' || $usertype === 'manager' || $admintype === 'Super') {
 			$admin = user($user_id);
 
 			$activity = '<b>Account Update: </b><a href="' . sef(44) . qs() . 'uid=' . $admin->id . '">' .
 				$admin->username . '</a> updated member account: <a href="' . sef(44) . qs() . 'uid=' .
 				$user->id . '">' . $user->username . '</a>.';
 
-			if ($account_type !== '' && $account_type !== $account_type_old)
-			{
+			if ($account_type !== '' && $account_type !== $account_type_old) {
 				$activity .= '<br>Account Type changed from ' .
 					$account_type_old_mod . ' to ' . $account_type_mod . '.';
 			}
 
-			if ($rank !== '' && $rank !== $rank_old/* && $admintype === 'Super'*/)
-			{
+			if ($rank !== '' && $rank !== $rank_old/* && $admintype === 'Super'*/) {
 				$activity .= '<br>Title changed from ' . $rank_old . ' to ' . $rank . '.';
 			}
-		}
-		else
-		{
+		} else {
 			$activity = '<b>Account Update: </b> <a href="' . sef(44) . qs() .
 				'uid=' . $user->id . '">' . $user->username . '</a> updated own account.';
 		}
@@ -1348,13 +1382,14 @@ function process_form($user_id, $usertype, $admintype)
 		);
 
 		$db->transactionCommit();
-	}
-	catch (Exception $e)
-	{
+	} catch (Exception $e) {
 		$db->transactionRollback();
 		ExceptionHandler::render($e);
 	}
 
-	$app->redirect(Uri::root(true) . '/' . sef(60) . qs() . 'uid=' . $user_id,
-		'Profile updated.', 'notice');
+	$app->redirect(
+		Uri::root(true) . '/' . sef(60) . qs() . 'uid=' . $user_id,
+		'Profile updated.',
+		'notice'
+	);
 }

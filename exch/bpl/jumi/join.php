@@ -178,10 +178,8 @@ function view_form(): string
 	$str = '<div' . ($usertype === '' ? ' style="margin-top: -100px;"' : '') . '>';
 
 	$str .= $usertype === '' ? view_logo() : '';
-	$str .= '<h1>Sign Up</h1>
-    <p>All fields marked * are required.';
-	$str .= (!$usertype ? '<span style="float: right; font-size: x-large; font-weight: bold"><a
-                    href="' . sef(43) . '">Sign In</a></span>' : '');
+	$str .= '<h1>Register</h1>
+    <p>Please fill up all fields marked *';
 	$str .= '</p>';
 	$str .= '<form name="regForm" method="post" 
 		enctype="multipart/form-data" onsubmit="submit.disabled = true; return true;" onsubmit="return validateForm()">
@@ -194,7 +192,7 @@ function view_form(): string
                            value="' . $s_username . '" size="40"
                            required="required"
                            style="float:left"><a href="javascript:void(0)" onClick="checkInput(\'username\')" 
-                           class="uk-button uk-button-primary" style="float:left">Verify</a>
+                           class="uk-button uk-button-primary" style="float:left">Check Availability</a>
                     <div style="width:200px; height:20px; font-weight:bold; float:left; padding:7px 0 0 10px;"
                          id="usernameDiv"></div>
                 </td>
@@ -233,7 +231,7 @@ function view_form(): string
                           required="required"';
 		$str .= ($sid !== '' ? ' readonly' : '');
 		$str .= ' style="float:left"><a href="javascript:void(0)" onClick="checkInput(\'sponsor\')"
-class="uk-button uk-button-primary" style="float:left">Verify</a>
+class="uk-button uk-button-primary" style="float:left">Check Availability</a>
 	    <div style="width:200px; height:20px; font-weight:bold; float:left; padding:7px 0 0 10px;"
 	         id="sponsorDiv"></div>
 	    </td>
@@ -257,13 +255,17 @@ date('Y - m - d G:i', $s_date == '' ? 0 : $s_date)*/
                         I Agree to the Terms &amp; Conditions </a>
                 </label>
             </div>
-            <div style="text-align: center"><input id="register"
-                                    onClick="disableMenu()"
-                                       type="submit"
-                                       value="Sign Up"
-                                       name="submit"
-                                       class="uk-button
-                                       uk-button-primary"></div>
+            <div style="text-align: center">
+				<input id="register"
+					onClick="disableMenu()"
+						type="submit"
+						value="Register"
+						name="submit"
+						class="uk-button
+						uk-button-primary">';
+	$str .= (!$usertype ? '<span style="float: right; font-weight: bold"><a
+                    href="' . sef(43) . '">Log In</a></span>' : '');
+	$str .= '</div>
         </td>
     </tr>
     </table>
