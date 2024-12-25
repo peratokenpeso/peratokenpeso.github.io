@@ -23,20 +23,20 @@ html {
     position: relative;
 }
 
-/*html::before {*/
-/*    content: '';*/
-/*    position: fixed;*/
-/*    top: 0;*/
-/*    left: 0;*/
-/*    width: 100%;*/
-/*    height: 100%;*/
-/*    background-image: url('https://picsum.photos/3000/1000');*/
-/*    background-size: cover;*/
-/*    background-repeat: no-repeat;*/
-/*    background-position: center;*/
-/*    opacity: 0.5; !* Adjust the opacity as needed *!*/
-/*    z-index: -1; !* Ensure the background image stays behind other content *!*/
-/*}*/
+html::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url('dragon-gray.png');
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position: center;
+    opacity: 0.1; /* Adjust the opacity as needed */
+    z-index: -1; /* Ensure the background image stays behind other content */
+}
 
 /*
  * Removes default margin.
