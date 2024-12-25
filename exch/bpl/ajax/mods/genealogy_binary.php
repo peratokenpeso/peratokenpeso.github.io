@@ -7,7 +7,6 @@ use Exception;
 use function BPL\Mods\Local\Database\Query\fetch;
 use function BPL\Mods\Local\Database\Query\fetch_all;
 use function BPL\Mods\Local\Helpers\settings;
-use function BPL\Mods\Local\Helpers\user;
 
 // Input validation with meaningful defaults
 $id_user = filter_input(INPUT_POST, 'id_user', FILTER_VALIDATE_INT) ?: 0;
@@ -124,31 +123,12 @@ function buildUserDetails(object $user, string $plan): array
 		'id' => $user->id,
 		'account' => settings('entry')->{$user->account_type . '_package_name'},
 		'balance' => $balance,
-		'income_cycle' => $user->income_cycle,
+		'income_cycle' => number_format($user->income_cycle, 2),
 		'status' => ucfirst($user->status)
 	];
 
-	// $planAttrs = getPlanAttributes();
-
-	// if (isset($planAttrs[$plan])) {
-	// 	$planInfo = $planAttrs[$plan];
-	// 	$details['plan'] = $planInfo['code'];
-	// 	$details[$planInfo['field']] = number_format($user->{$planInfo['field']}, 2);
-	// }
-
 	return $details;
 }
-
-// function getPlanAttributes(): array
-// {
-// 	return [
-// 		'indirect_referral' => ['code' => 'IR', 'field' => 'bonus_indirect_referral'],
-// 		'unilevel' => ['code' => 'UB', 'field' => 'unilevel'],
-// 		'echelon' => ['code' => 'EB', 'field' => 'bonus_echelon'],
-// 		'leadership_binary' => ['code' => 'LB', 'field' => 'bonus_leadership'],
-// 		'leadership_passive' => ['code' => 'LP', 'field' => 'bonus_leadership_passive']
-// 	];
-// }
 
 function userBinary($id_user)
 {
