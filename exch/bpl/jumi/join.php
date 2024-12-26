@@ -66,62 +66,63 @@ function main()
  */
 function display_loader(): string
 {
-	return '
-    <div class="wave">
-        <div class="ball"></div>
-        <div class="ball"></div>
-        <div class="ball"></div>
-        <div class="ball"></div>
-        <div class="ball"></div>
-    </div>
-    <style>
-        .wave {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-        }
+	return <<<HTML
+		<div class="wave">
+			<div class="ball"></div>
+			<div class="ball"></div>
+			<div class="ball"></div>
+			<div class="ball"></div>
+			<div class="ball"></div>
+		</div>
+		<style>
+			.wave {
+				display: flex;
+				justify-content: center;
+				align-items: center;
+				position: fixed;
+				top: 50%;
+				left: 50%;
+				transform: translate(-50%, -50%);
+			}
 
-        .ball {
-            width: 10px; /* Further reduce width */
-            height: 10px; /* Further reduce height */
-            border-radius: 50%;
-            margin: 0 3px; /* Reduce margin for closer spacing */
-            background-color: #6c5ce7;
-            animation: wave 1s ease-in-out infinite;
-        }
+			.ball {
+				width: 10px; /* Further reduce width */
+				height: 10px; /* Further reduce height */
+				border-radius: 50%;
+				margin: 0 3px; /* Reduce margin for closer spacing */
+				background-color: #6c5ce7;
+				animation: wave 1s ease-in-out infinite;
+			}
 
-        @keyframes wave {
-            0% {
-                transform: translateY(0);
-            }
-            50% {
-                transform: translateY(-5px); /* Further reduce bounce height */
-            }
-            100% {
-                transform: translateY(0);
-            }
-        }
+			@keyframes wave {
+				0% {
+					transform: translateY(0);
+				}
+				50% {
+					transform: translateY(-5px); /* Further reduce bounce height */
+				}
+				100% {
+					transform: translateY(0);
+				}
+			}
 
-        .ball:nth-child(2) {
-            animation-delay: -0.2s;
-        }
+			.ball:nth-child(2) {
+				animation-delay: -0.2s;
+			}
 
-        .ball:nth-child(3) {
-            animation-delay: -0.4s;
-        }
+			.ball:nth-child(3) {
+				animation-delay: -0.4s;
+			}
 
-        .ball:nth-child(4) {
-            animation-delay: -0.6s;
-        }
+			.ball:nth-child(4) {
+				animation-delay: -0.6s;
+			}
 
-        .ball:nth-child(5) {
-            animation-delay: -0.8s;
-        }
-    </style>';
+			.ball:nth-child(5) {
+				animation-delay: -0.8s;
+			}
+		</style>
+	HTML;
 }
 
 /**
@@ -507,7 +508,7 @@ function insert_user($username, $password, $sponsor, $email, $admintype, $edit)
 	// sponsor
 	$sponsor_id = '1';
 
-	if (settings('plans')->direct_referral) {
+	if (settings('plans')->direct_referral || settings('plans')->echelon) {
 		$user_sponsor = user_username($sponsor);
 
 		if (!empty($user_sponsor)) {
@@ -701,42 +702,42 @@ function log_registration_transactions($insert_id, $code_type, $username, $spons
  */
 function js(): string
 {
-	$str = '<script>';
-	$str .= 'function validateForm() {
-            if (document.forms["regForm"]["username"].value === ""
-                || document.forms["regForm"]["password1"].value === ""
-                || document.forms["regForm"]["password2"].value === ""
-                || document.forms["regForm"]["code"].value === ""
-                || document.forms["regForm"]["sponsor"].value === ""
-                || document.forms["regForm"]["upline"].value === "") {
-                alert("Please specify all required info.");
-                
-                return false;
-            } else {
-                return true;
-            }
-        }';
+	return <<<JS
+		<script>
+			function validateForm() {
+				if (document.forms["regForm"]["username"].value === ""
+					|| document.forms["regForm"]["password1"].value === ""
+					|| document.forms["regForm"]["password2"].value === ""
+					|| document.forms["regForm"]["code"].value === ""
+					|| document.forms["regForm"]["sponsor"].value === ""
+					|| document.forms["regForm"]["upline"].value === "") {
+					alert("Please specify all required info.");
+					
+					return false;
+				} else {
+					return true;
+				}
+			}
 
-	$str .= 'function disableMenu() {
+			function disableMenu() {
 				document.getElementById("menu").disabled = true;
-			}';
+			}
 
-	$str .= '(function ($) {
-            $("#register").attr("disabled", true);
+			(function ($) {
+				$("#register").attr("disabled", true);
 
-            $("#terms").change(function () {
-                if (this.checked) {
-                    $("#register").attr("disabled", false);
-                } else {
-                    $("#register").attr("disabled", true);
-                }
-                
-                return false;
-            });
-        })(jQuery);';
-	$str .= '</script>';
-
-	return $str;
+				$("#terms").change(function () {
+					if (this.checked) {
+						$("#register").attr("disabled", false);
+					} else {
+						$("#register").attr("disabled", true);
+					}
+					
+					return false;
+				});
+			})(jQuery);
+		</script>
+	JS;
 }
 
 /**

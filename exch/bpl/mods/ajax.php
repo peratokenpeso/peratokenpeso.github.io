@@ -10,12 +10,12 @@ namespace BPL\Mods\Ajax;
  */
 function check_input(): string
 {
-	$str = '<script>';
-	$str .= js_fade_up();
-	$str .= js_check_input();
-	$str .= '</script>';
+    $str = '<script>';
+    $str .= js_fade_up();
+    $str .= js_check_input();
+    $str .= '</script>';
 
-	return $str;
+    return $str;
 }
 
 /**
@@ -26,12 +26,12 @@ function check_input(): string
  */
 function check_input2(): string
 {
-	$str = '<script>';
-	$str .= js_fade_up();
-	$str .= js_check_input2();
-	$str .= '</script>';
+    $str = '<script>';
+    $str .= js_fade_up();
+    $str .= js_check_input2();
+    $str .= '</script>';
 
-	return $str;
+    return $str;
 }
 
 /**
@@ -42,12 +42,12 @@ function check_input2(): string
  */
 function check_input3(): string
 {
-	$str = '<script>';
-	$str .= js_fade_up();
-	$str .= js_check_input3();
-	$str .= '</script>';
+    $str = '<script>';
+    $str .= js_fade_up();
+    $str .= js_check_input3();
+    $str .= '</script>';
 
-	return $str;
+    return $str;
 }
 
 /**
@@ -58,12 +58,12 @@ function check_input3(): string
  */
 function check_input5(): string
 {
-	$str = '<script>';
-	$str .= js_fade_up();
-	$str .= js_check_input5();
-	$str .= '</script>';
+    $str = '<script>';
+    $str .= js_fade_up();
+    $str .= js_check_input5();
+    $str .= '</script>';
 
-	return $str;
+    return $str;
 }
 
 /**
@@ -90,12 +90,12 @@ function check_input5(): string
  */
 function check_position(): string
 {
-	$str = '<script>';
-	$str .= js_fade_up();
-	$str .= js_check_position();
-	$str .= '</script>';
+    $str = '<script>';
+    $str .= js_fade_up();
+    $str .= js_check_position();
+    $str .= '</script>';
 
-	return $str;
+    return $str;
 }
 
 /**
@@ -106,7 +106,7 @@ function check_position(): string
  */
 function js_fade_up(): string
 {
-	return 'function fadeUp(obj) {
+    return 'function fadeUp(obj) {
             if (typeof(obj) === "string") {
                 obj = document.getElementById(obj);
             }
@@ -143,7 +143,7 @@ function js_fade_up(): string
  */
 function js_check_input(): string
 {
-	return 'function checkInput(inputID) {
+    return 'function checkInput(inputID) {
             let ajaxRequest;
             const divID = inputID + "Div";
 
@@ -192,7 +192,7 @@ function js_check_input(): string
  */
 function js_check_input2(): string
 {
-	return 'function checkInput(inputID) {
+    return 'function checkInput(inputID) {
             let ajaxRequest;
             
             const divID = inputID + "Div";
@@ -242,7 +242,7 @@ function js_check_input2(): string
  */
 function js_check_input3(): string
 {
-	return 'function checkInput(inputID) {
+    return 'function checkInput(inputID) {
         let ajaxRequest;
         
         const divID = inputID + "Div";
@@ -292,7 +292,7 @@ function js_check_input3(): string
  */
 function js_check_input5(): string
 {
-	return 'function checkInput(inputID) {
+    return 'function checkInput(inputID) {
             var ajaxRequest;
             var divID = inputID + "Div";
 
@@ -390,7 +390,7 @@ function js_check_input5(): string
  */
 function js_check_position(): string
 {
-	return 'function checkPosition(inputUpline, inputID) {
+    return 'function checkPosition(inputUpline, inputID) {
             let ajaxRequest;
             
             const divID = inputID + "Div";
