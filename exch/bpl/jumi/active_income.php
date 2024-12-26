@@ -737,8 +737,10 @@ function admin($user_id): string
 {
 	$str = page_reload();
 
-	$str .= '<h2>Profit Chart</h2>
-	<table class="category table table-striped table-bordered table-hover">';
+	$str .= '<h2>Profit Chart</h2>';
+	$str .= '<div class="card">
+		<div class="table-responsive">';
+	$str .= '<table class="category table table-striped table-bordered table-hover" style="width: 100%;">';
 
 	$str .= core($user_id);
 
@@ -797,10 +799,10 @@ function user_info($user): string
 	$str .= '<table class="category table table-striped table-bordered table-hover">';
 
 	$str .= row_referral_link($user);
-	//$str .= row_username($user);
-	//$str .= row_account_type($user);
-//	$str .= row_balance($user);
-	//$str .= row_efund($user);
+	$str .= row_username($user);
+	$str .= row_account_type($user);
+	// $str .= row_balance($user);
+	// $str .= row_efund($user);
 	$str .= '</table>';
 	$str .= '</div></div>';
 
@@ -873,7 +875,7 @@ function tableStyle(): string
 			}
 
 			.card-header {
-				background: #1a1a1a;
+				background: #007bff;
 				color: #ffffff;
 				padding: 15px 20px;
 				border-bottom: 1px solid #2d2d2d;

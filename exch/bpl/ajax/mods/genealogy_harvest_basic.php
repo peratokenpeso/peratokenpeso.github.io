@@ -2,151 +2,157 @@
 
 namespace BPL\Ajax\Mods\Harvest\Genealogy\Basic;
 
+use Exception;
+
 use function BPL\Mods\Local\Database\Query\fetch;
 use function BPL\Mods\Local\Database\Query\fetch_all;
-
 use function BPL\Mods\Local\Helpers\settings;
 use function BPL\Mods\Local\Helpers\user;
 
-$id_user = filter_input(INPUT_POST, 'id_user', FILTER_VALIDATE_INT);
-$plan    = filter_input(INPUT_POST, 'plan', FILTER_SANITIZE_STRING);
+// Input validation with meaningful defaults
+$id_user = filter_input(INPUT_POST, 'id_user', FILTER_VALIDATE_INT) ?: 0;
+$plan = filter_input(INPUT_POST, 'plan', FILTER_SANITIZE_FULL_SPECIAL_CHARS) ?: '';
 
-main($id_user, $plan);
+try {
+	echo generateNetworkTree($id_user, $plan);
+} catch (Exception $e) {
+	http_response_code(400);
+	echo json_encode(['error' => $e->getMessage()]);
+}
 
-/**
- * @param $id_user
- * @param $plan
- *
- *
- * @since version
- */
-function main($id_user, $plan)
+function generateNetworkTree(int $id_user, string $plan): string
 {
-	echo '{';
-
-	details_basic(user($id_user), $plan);
-
-	if (!empty(get_child($id_user)))
-	{
-		echo ', "children": [';
-		make_json($id_user, $plan);
-		echo ']';
+	if (!$id_user || !$plan) {
+		throw new Exception('Invalid user ID or plan provided');
 	}
 
-	echo '}';
+	$head = userHarvestBasic($id_user);
+
+	if (!$head) {
+		throw new Exception('User not found');
+	}
+
+	return json_encode(buildTreeData($head, $plan));
+}
+
+function buildTreeData(object $user, string $plan): array
+{
+	// Step 1: Build the parent node
+	$tree = [
+		'username' => $user->username,
+		'details' => buildUserDetails($user, $plan)
+	];
+
+	// Step 2: Get and process direct children
+	$children = getBinaryDownlines($user->id);
+
+	if (!empty($children)) {
+		$tree['children'] = array_map(
+			function ($child) use ($plan) {
+				$childNode = [
+					'username' => $child->username,
+					'details' => buildUserDetails($child, $plan)
+				];
+
+				// Get and process grandchildren
+				$grandchildren = getBinaryDownlines($child->id);
+
+				if (!empty($grandchildren)) {
+					$childNode['children'] = buildGrandchildrenNodes($grandchildren, $plan);
+				}
+
+				return $childNode;
+			},
+			$children
+		);
+	}
+
+	return $tree;
 }
 
 /**
- * @param $parent
- * @param $plan
- *
- *
- * @since version
+ * Gets direct descendants (children) for a given user ID
+ * 
+ * @param int $userId Parent user ID
+ * @return array Array of user objects
  */
-function make_json($parent, $plan)
+function getBinaryDownlines(int $userId): array
 {
-	$children = get_child($parent);
-
-	if (!empty($children))
-	{
-		foreach ($children as $child)
-		{
-			echo array_search($child, $children, true) > 0 ? ', {' : '{';
-
-			details_basic($child, $plan);
-
-			if (!empty(get_child($child->id)))
-			{
-				echo ', "children": [';
-				make_json($child->id, $plan);
-				echo ']';
-			}
-
-			echo '}';
-		}
-	}
-}
-
-/**
- * @param $child
- *
- * @param $plan
- *
- * @since version
- */
-function details_basic($child, $plan): void
-{
-	echo '"id": "' . $child->id . '", ';
-	echo '"username": "' . $child->username . '", ';
-	echo '"account": "' . settings('entry')
-			->{$child->account_type . '_package_name'} . '", ';
-
-	if ($plan === 'harvest')
-	{
-		echo '"caption": "BH", ';
-		echo '"bonus_harvest": "' .
-			number_format(harvest_user($child->id)->bonus_harvest_basic_last, 2) . '", ';
-	}
-
-	echo '"balance": "' . number_format($child->balance, 2) . '"';
-}
-
-/**
- * @param $user_id
- *
- * @return array|false
- *
- * @since version
- */
-function get_child($user_id)
-{
-	$harvest_id = user_harvest_basic($user_id)->id;
-
 	return fetch_all(
 		'SELECT * ' .
-		'FROM network_harvest_basic b ' .
-		'INNER JOIN network_users u ' .
-		'ON b.user_id = u.id ' .
-		'WHERE harvest_upline_id = :harvest_upline_id',
-		['harvest_upline_id' => $harvest_id]);
-}
-
-/**
- * @param           $user_id
- *
- * @return mixed
- *
- * @since version
- */
-function user_harvest_basic($user_id)
-{
-	return fetch(
-		'SELECT * ' .
-		'FROM network_harvest_basic ' .
-		' WHERE user_id = :user_id' .
-		' AND has_mature = :has_mature' .
-		' AND is_active = :is_active',
+		'FROM network_users u ' .
+		'INNER JOIN network_binary b ' .
+		'ON u.id = b.user_id ' .
+		'WHERE u.block = :block ' .
+		'AND b.upline_id = :upline_id',
 		[
-			'user_id'    => $user_id,
-			'has_mature' => '0',
-			'is_active'  => '1'
+			'upline_id' => $userId,
+			'block' => 0
 		]
 	);
 }
 
 /**
- * @param $user_id
- *
- * @return mixed
- *
- * @since version
+ * Builds nodes for grandchildren level
+ * 
+ * @param array $grandchildren Array of grandchild user objects
+ * @param string $plan Plan type
+ * @return array Processed grandchildren nodes
  */
-function harvest_user($user_id)
+function buildGrandchildrenNodes(array $grandchildren, string $plan): array
+{
+	return array_map(
+		function ($grandchild) use ($plan) {
+			return [
+				'username' => $grandchild->username,
+				'details' => buildUserDetails($grandchild, $plan)
+			];
+		},
+		$grandchildren
+	);
+}
+
+function buildUserDetails(object $user, string $plan): array
+{
+	$balance = number_format($user->payout_transfer, 2);
+
+	if (settings('ancillaries')->withdrawal_mode === 'standard') {
+		$balance = number_format($user->balance, 2);
+	}
+
+	$details = [
+		'id' => $user->id,
+		'account' => settings('entry')->{$user->account_type . '_package_name'},
+		'balance' => $balance,
+		'income_cycle' => number_format($user->income_cycle, 2),
+		'status' => ucfirst($user->status)
+	];
+
+	return $details;
+}
+
+function userHarvestBasic($id_user)
 {
 	return fetch(
 		'SELECT * ' .
-		'FROM network_harvest ' .
-		'WHERE user_id = :user_id',
-		['user_id' => $user_id]
+		'FROM network_harvest_basic ' .
+		' WHERE user_id = :user_id' /* .
+' AND has_mature = :has_mature' .
+' AND is_active = :is_active' */ ,
+		[
+			'user_id' => $id_user,
+			// 'has_mature' => '0',
+			// 'is_active'  => '1'
+		]
 	);
+}
+
+/**
+ * Debug function for development
+ */
+function debug($data, $label = '')
+{
+	echo "\n/* Debug $label */\n";
+	print_r($data);
+	echo "\n/* End Debug $label */\n";
 }

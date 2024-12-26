@@ -667,7 +667,9 @@ function admin(): string
 
 	$str .= header_admin();
 
-	$str .= '<table class="category table table-striped table-bordered table-hover">';
+	$str .= '<div class="card">
+		<div class="table-responsive">';
+	$str .= '<table class="category table table-striped table-bordered table-hover" style="width: 100%;">';
 
 	$str .= row_member_count();
 	$str .= row_sales();
@@ -678,6 +680,7 @@ function admin(): string
 //	$str .= row_loans(1);
 
 	$str .= '</table>';
+	$str .= '</div></div>';
 
 	return $str;
 }
@@ -791,9 +794,9 @@ function user_info($user): string
 	$str .= '<table class="category table table-striped table-bordered table-hover">';
 
 	$str .= row_referral_link($user);
-	//$str .= row_username($user);
-	//$str .= row_account_type($user);
-//	$str .= row_balance($user);
+	$str .= row_username($user);
+	$str .= row_account_type($user);
+	//	$str .= row_balance($user);
 	//$str .= row_efund($user);
 	$str .= '</table>';
 	$str .= '</div></div>';
@@ -869,7 +872,7 @@ function tableStyle(): string
 			}
 
 			.card-header {
-				background: #1a1a1a;
+				background: #007bff;
 				color: #ffffff;
 				padding: 15px 20px;
 				border-bottom: 1px solid #2d2d2d;
@@ -1708,7 +1711,7 @@ function row_savings($user_id): string
 'balance' : 'payout_transfer'*/ 'share_fund';
 
 	/*$reactivate = $user->status_global === 'active' ? '' :
-																																												   '<a style="float:right" href="' . sef(130) . '">Reactivate Account</a>';*/
+																																																							 '<a style="float:right" href="' . sef(130) . '">Reactivate Account</a>';*/
 
 	return '<tr>
 	        <td><a href="javascript:void(0)">' . $sa->share_fund_name . '</a>:</td>
@@ -1737,7 +1740,7 @@ function row_loans($user_id): string
 'balance' : 'payout_transfer'*/ 'loans';
 
 	/*$reactivate = $user->status_global === 'active' ? '' :
-																																												   '<a style="float:right" href="' . sef(130) . '">Reactivate Account</a>';*/
+																																																							 '<a style="float:right" href="' . sef(130) . '">Reactivate Account</a>';*/
 
 	return '<tr>
 	        <td><a href="javascript:void(0)">Loans</a>:</td>

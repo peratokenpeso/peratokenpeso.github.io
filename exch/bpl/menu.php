@@ -6,6 +6,7 @@ require_once 'bpl/mods/url_sef.php';
 require_once 'bpl/mods/helpers.php';
 
 use Joomla\CMS\Uri\Uri;
+
 use function BPL\Mods\Helpers\user;
 use function BPL\Mods\Url_SEF\sef;
 use function BPL\Mods\Helpers\db;
@@ -1989,7 +1990,7 @@ function affiliates($account_type, $user_id): string
 	// unilevel
 	if (
 			/*$account_type !== 'starter'
-																																																						&&*/ (
+																																																												   &&*/ (
 			$sp->unilevel
 			&& $sul->{$account_type . '_unilevel_level'} > 0
 			&& !empty(user_unilevel($user_id))
@@ -2007,7 +2008,7 @@ function affiliates($account_type, $user_id): string
 	//binary
 	if (
 			/*$account_type !== 'starter'
-																																																						&&*/ ($sp->binary_pair || $sp->redundant_binary)
+																																																												   &&*/ ($sp->binary_pair || $sp->redundant_binary)
 	) {
 		$str .= $first ? '<li class="uk-nav-divider"></li>' : '';
 		$first = !$first ? 1 : $first;
