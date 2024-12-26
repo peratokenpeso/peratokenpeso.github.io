@@ -162,124 +162,302 @@ function identicon_js(): string
  */
 function view_form(): string
 {
+	$settings_plans = settings('plans');
 	$usertype = session_get('usertype');
-
 	$admintype = session_get('admintype');
 	$sid = input_get('s');
-
 	$s_username = session_get('s_username');
 	$s_email = session_get('s_email');
 	$s_password = session_get('s_password');
 	$s_sponsor = session_get('s_sponsor');
 	$edit = session_get('edit');
-
 	$sponsor = sponsor();
 
-	$str = '<div' . ($usertype === '' ? ' style="margin-top: -100px;"' : '') . '>';
+	$str = formCss();
 
+	$str .= '<div class="registration-form"' . ($usertype === '' ? ' style="margin-top: -100px;"' : '') . '>';
 	$str .= $usertype === '' ? view_logo() : '';
 	$str .= '<h1>Register</h1>
-    <p>Please fill up all fields marked *';
-	$str .= '</p>';
-	$str .= '<form name="regForm" method="post" 
-		enctype="multipart/form-data" onsubmit="submit.disabled = true; return true;" onsubmit="return validateForm()">
-        <table class="category table table-striped table-bordered table-hover">
-            <tr>
-                <td><label for="username">Username: *</label></td>
-                <td><input type="text"
-                           name="username"
-                           id="username"
-                           value="' . $s_username . '" size="40"
-                           required="required"
-                           style="float:left"><a href="javascript:void(0)" onClick="checkInput(\'username\')" 
-                           class="uk-button uk-button-primary" style="float:left">Check Availability</a>
-                    <div style="width:200px; height:20px; font-weight:bold; float:left; padding:7px 0 0 10px;"
-                         id="usernameDiv"></div>
-                </td>
-            </tr>
-            <tr>
-                <td><label for="email">Email:</label></td>
-                <td><input type="text" name="email" value="' . $s_email . '" id="email" size="40"></td>
-            </tr>
-            <tr>
-                <td><label for="password1">Password: *</label></td>
-                <td><input type="password"
-                           name="password1"
-                           value="' . $s_password . '"
-                           id="password1"
-                           size="40"
-                           required></td>
-            </tr>
-            <tr>
-                <td><label for="password2">Confirm Password: *</label></td>
-                <td><input type="password"
-                           name="password2"
-                           value="' . $s_password . '"
-                           id="password2"
-                           size="40"
-                           required></td>
-            </tr>';
+             <p>Please fill up all fields marked *</p>';
 
-	if (settings('plans')->direct_referral) {
-		$str .= '<tr>
-               <td><label for="sponsor">Sponsor Username: *</label></td>
-               <td><input type="text"
-                          name="sponsor"
-                          id="sponsor"
-                          size="40"
-                          value="' . ($s_sponsor && !isset($sponsor) ? $s_sponsor : $sponsor) . '"
-                          required="required"';
-		$str .= ($sid !== '' ? ' readonly' : '');
-		$str .= ' style="float:left"><a href="javascript:void(0)" onClick="checkInput(\'sponsor\')"
-class="uk-button uk-button-primary" style="float:left">Check Availability</a>
-	    <div style="width:200px; height:20px; font-weight:bold; float:left; padding:7px 0 0 10px;"
-	         id="sponsorDiv"></div>
-	    </td>
-	    </tr>';
+	$str .= '<form name="regForm" method="post" enctype="multipart/form-data" onsubmit="submit.disabled = true; return validateForm()">
+                <div class="form-group">
+                    <label for="username">Username: *</label>
+                    <div class="input-group">
+                        <input type="text" name="username" id="username" value="' . $s_username . '" required>
+                        <button type="button" onClick="checkInput(\'username\')" class="uk-button uk-button-primary">Check Availability</button>
+                    </div>
+                    <div id="usernameDiv" class="validation-message"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Email:</label>
+                    <input type="email" name="email" id="email" value="' . $s_email . '">
+                </div>
+
+                <div class="form-group">
+                    <label for="password1">Password: *</label>
+                    <input type="password" name="password1" id="password1" value="' . $s_password . '" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="password2">Confirm Password: *</label>
+                    <input type="password" name="password2" id="password2" value="' . $s_password . '" required>
+                </div>';
+
+	if ($settings_plans->direct_referral || $settings_plans->echelon) {
+		$str .= '<div class="form-group">
+                    <label for="sponsor">Sponsor Username: *</label>
+                    <div class="input-group">
+                        <input type="text" name="sponsor" id="sponsor" value="' . ($s_sponsor && !isset($sponsor) ? $s_sponsor : $sponsor) . '" required' . ($sid !== '' ? ' readonly' : '') . '>
+                        <button type="button" onClick="checkInput(\'sponsor\')" class="uk-button uk-button-primary">Check Availability</button>
+                    </div>
+                    <div id="sponsorDiv" class="validation-message"></div>
+                </div>';
 	}
 
-	$str .= (($edit && $admintype === 'Super') ? '<tr>
-            <td><label for="date">Date Registered:</label></td>
-            <td><input type="text" name="date" value="' /*.
-date('Y - m - d G:i', $s_date == '' ? 0 : $s_date)*/
-		. '" id="date"
-                       size="40"></td>
-        </tr>' : '');
-	$str .= '<tr>
-        <td colspan="2">
-            <div style="float: left">
-                <label><input id="terms"
-                              type="checkbox"
-                              style="margin-top: -3px"> <a href="javascript:void(0)"
-                                                           data-uk-modal="{target:\'#modal-1\'}">
-                        I Agree to the Terms &amp; Conditions </a>
+	if ($edit && $admintype === 'Super') {
+		$str .= '<div class="form-group">
+                    <label for="date">Date Registered:</label>
+                    <input type="text" name="date" id="date" size="40">
+                </div>';
+	}
+
+	$str .= '<div class="form-group terms">
+                <label>
+                    <input type="checkbox" id="terms" required>
+                    I Agree to the <a href="javascript:void(0)" data-uk-modal="{target:\'#modal-1\'}">Terms & Conditions</a>
                 </label>
             </div>
-            <div style="text-align: center">
-				<input id="register"
-					onClick="disableMenu()"
-						type="submit"
-						value="Register"
-						name="submit"
-						class="uk-button
-						uk-button-primary">';
-	$str .= (!$usertype ? '<span style="float: right; font-weight: bold"><a
-                    href="' . sef(43) . '">Log In</a></span>' : '');
-	$str .= '</div>
-        </td>
-    </tr>
-    </table>
-	' . HTMLHelper::_('form.token') .
-		'</form>';
 
-	$str .= '<div>';
+            <div class="form-group actions">
+                <button type="submit" id="register" class="uk-button uk-button-primary">Register</button>';
+	if (!$usertype) {
+		$str .= '<a href="' . sef(43) . '" class="login-link">Log In</a>';
+	}
+	$str .= '</div>
+            </form>';
 
 	$str .= terms();
 	$str .= check_input();
 	$str .= check_position();
 	$str .= js();
 
+	$str .= '</div>';
+
 	return $str;
+}
+
+function inputUsername($s_username)
+{
+	return <<<HTML
+		<div class="form-group">
+			<label for="username">Username: *</label>
+			<div class="input-group">
+				<input type="text" name="username" id="username" value="{$s_username}" required>
+				<button type="button" onClick="checkInput(\'username\')" class="uk-button uk-button-primary">Check Availability</button>
+			</div>
+			<div id="usernameDiv" class="validation-message"></div>
+		</div>
+	HTML;
+}
+
+function inputEmail($s_email)
+{
+	return <<<HTML
+		<div class="form-group">
+			<label for="email">Email:</label>
+			<input type="email" name="email" id="email" value="{$s_email}">
+		</div>
+	HTML;
+}
+
+function inputPassword()
+{
+	return <<<HTML
+		<div class="form-group
+			<label for="password">Password: *</label>
+			<input type="password" name="password" id="password" required
+		</div>
+	HTML;
+}
+
+function inputPasswordConfirm()
+{
+	return <<<HTML
+		<div class="form-group">
+			<label for="password_confirm">Confirm Password: *</label>
+			<input type="password" name="password_confirm" id="password_confirm" required>
+		</div>
+	HTML;
+}
+
+function sponsorInput($s_sponsor, $sponsor, $sid)
+{
+	$settings_plans = settings('plans');
+	$sponsorInputValue = $s_sponsor && !isset($sponsor) ? $s_sponsor : $sponsor;
+	$sponsorReadOnly = $sid !== '' ? ' readonly' : '';
+
+	$str = '';
+
+	if ($settings_plans->direct_referral || $settings_plans->echelon) {
+		$str .= PHP_EOL;
+		$str .= <<<HTML
+			<div class="form-group">
+				<label for="sponsor">Sponsor Username: *</label>
+				<div class="input-group">
+					<input type="text" name="sponsor" id="sponsor" value="{$sponsorInputValue}" required {$sponsorReadOnly}>
+					<button type="button" onClick="checkInput(\'sponsor\')" class="uk-button uk-button-primary">Check Availability</button>
+				</div>
+				<div id="sponsorDiv" class="validation-message"></div>
+			</div>
+		HTML;
+		$str .= PHP_EOL;
+	}
+
+	return $str;
+}
+
+function dateRegister($edit, $admintype)
+{
+	$str = '';
+
+	if ($edit && $admintype === 'Super') {
+		$str .= <<<HTML
+			<div class="form-group">
+				<label for="date">Date Registered:</label>
+				<input type="text" name="date" id="date" size="40">
+			</div>
+		HTML;
+	}
+
+	return $str;
+}
+
+function checkBox()
+{
+	return <<<HTML
+		<div class="form-group terms">
+			<label>
+				<input type="checkbox" id="terms" required>
+				I Agree to the <a href="javascript:void(0)" data-uk-modal="{target:\'#modal-1\'}">Terms & Conditions</a>
+			</label>
+		</div>
+	HTML;
+}
+
+function actionButtons($usertype)
+{
+	$loginButton = loginButton($usertype);
+
+	return <<<HTML
+		<div class="form-group actions">
+			<button type="submit" id="register" class="uk-button uk-button-primary">Register</button>
+			{$loginButton}
+		</div>
+	HTML;
+}
+
+function loginButton($usertype)
+{
+	$str = '';
+
+	$link = sef(43);
+
+	if (!$usertype) {
+		$str .= PHP_EOL;
+		$str .= <<<HTML
+			<a href="{$link}" class="login-link">Log In</a>
+		HTML;
+		$str .= PHP_EOL;
+	}
+
+	return $str;
+}
+
+function formCss()
+{
+	return <<<CSS
+		<style>
+			.registration-form {
+				max-width: 600px;
+				margin: 0 auto;
+				padding: 20px;
+			}
+
+			.form-group {
+				margin-bottom: 15px;
+			}
+
+			label {
+				display: block;
+				margin-bottom: 5px;
+				font-weight: bold;
+			}
+
+			input[type="text"],
+			input[type="email"],
+			input[type="password"] {
+				width: 100%;
+				padding: 10px;
+				margin-bottom: 10px;
+				border: 1px solid #ccc;
+				border-radius: 4px;
+			}
+
+			.input-group {
+				display: flex;
+				gap: 10px;
+			}
+
+			.input-group input {
+				flex: 1;
+			}
+
+			.input-group button {
+				padding: 10px 15px;
+				border: none;
+				border-radius: 4px;
+				cursor: pointer;
+			}
+
+			.validation-message {
+				color: red;
+				font-size: 0.9em;
+				margin-top: 5px;
+			}
+
+			.terms {
+				margin: 20px 0;
+			}
+
+			.actions {
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+			}
+
+			.login-link {
+				font-weight: bold;
+				text-decoration: none;
+			}
+
+			@media (max-width: 480px) {
+				.input-group {
+					flex-direction: column;
+				}
+
+				.input-group button {
+					width: 100%;
+				}
+
+				.actions {
+					flex-direction: column;
+					gap: 10px;
+				}
+			}
+		</style>
+	CSS;
 }
 
 /**
