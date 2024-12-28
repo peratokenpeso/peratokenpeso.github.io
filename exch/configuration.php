@@ -17,7 +17,7 @@ class JConfig
 	public $host = 'localhost';
 	public $user = 'root';
 	public $password = '';
-	public $db = 'peratokenpeso_db';
+	public $db = 'pera_jim';
 	public $dbprefix = 'joomla_';
 	public $live_site = '';
 	public $secret = 'D3C2u2y0XFn6tXvU';
