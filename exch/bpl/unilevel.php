@@ -218,7 +218,7 @@ function updateUnilevelBonus($total, $add, $user)
 
 				update(
 					'network_users',
-					$field_user,
+					$fieldUser,
 					['id = ' . $db->quote($userId)]
 				);
 			}
