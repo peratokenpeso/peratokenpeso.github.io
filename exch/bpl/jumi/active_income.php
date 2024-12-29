@@ -814,13 +814,14 @@ function user_info($user): string
 		$str .= '<div class="card">
 			<div class="card-header">Rewards Summary</div>
 				<div class="table-responsive">';
+		$str .= '<table class="category table table-striped table-bordered table-hover">';
 
 		$str .= row_points($user);
 		$str .= row_daily_incentive($user);
 		$str .= row_merchant($user);
 
 		$str .= '</table>';
-		$str .= '</div></div></div>';
+		$str .= '</div></div>';
 	}
 
 	return $str;

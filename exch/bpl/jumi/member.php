@@ -809,13 +809,14 @@ function user_info($user): string
 		$str .= '<div class="card">
 			<div class="card-header">Rewards Summary</div>
 				<div class="table-responsive">';
+		$str .= '<table class="category table table-striped table-bordered table-hover">';
 
 		$str .= row_points($user);
 		$str .= row_daily_incentive($user);
 		$str .= row_merchant($user);
 
 		$str .= '</table>';
-		$str .= '</div></div></div>';
+		$str .= '</div></div>';
 	}
 
 	return $str;
@@ -1711,7 +1712,7 @@ function row_savings($user_id): string
 'balance' : 'payout_transfer'*/ 'share_fund';
 
 	/*$reactivate = $user->status_global === 'active' ? '' :
-																																																							 '<a style="float:right" href="' . sef(130) . '">Reactivate Account</a>';*/
+																																																								   '<a style="float:right" href="' . sef(130) . '">Reactivate Account</a>';*/
 
 	return '<tr>
 	        <td><a href="javascript:void(0)">' . $sa->share_fund_name . '</a>:</td>
@@ -1740,7 +1741,7 @@ function row_loans($user_id): string
 'balance' : 'payout_transfer'*/ 'loans';
 
 	/*$reactivate = $user->status_global === 'active' ? '' :
-																																																							 '<a style="float:right" href="' . sef(130) . '">Reactivate Account</a>';*/
+																																																								   '<a style="float:right" href="' . sef(130) . '">Reactivate Account</a>';*/
 
 	return '<tr>
 	        <td><a href="javascript:void(0)">Loans</a>:</td>

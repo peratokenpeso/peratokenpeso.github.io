@@ -2,7 +2,6 @@
 
 namespace Cron\Leadership\Fixed_Daily;
 
-//require_once 'cron_income_local.php';
 require_once 'cron_leadership_passive.php';
 require_once 'cron_query_local.php';
 
@@ -11,162 +10,162 @@ use function Cron\Leadership_Passive\user_directs;
 use function Cron\Leadership_Passive\update_leadership_passive;
 use function Cron\Leadership_Passive\update_user;
 
-//use function Cron\Income\main as income_global;
-
 use function Cron\Database\Query\fetch;
 use function Cron\Database\Query\crud;
 
 /**
- *
+ * Main function to process leadership fixed daily bonuses for all users.
+ * This function iterates through all users and processes their leadership fixed daily bonuses.
  *
  * @since version
  */
 function main()
 {
+	// Fetch leadership passive settings
 	$slp = settings('leadership_passive');
 
+	// Fetch all users eligible for leadership passive bonuses
 	$users = leadership_passive_users();
 
-	if (!empty($users))
-	{
-		foreach ($users as $user)
-		{
-			$user_id      = $user->user_id;
-			$account_type = $user->account_type;
+	if (!empty($users)) {
+		foreach ($users as $user) {
+			process_user_leadership_fixed_daily($user, $slp);
+		}
+	}
+}
 
-//			$sp = settings('plans');
-			$se = settings('entry');
-			$sf = settings('freeze');
+/**
+ * Process leadership fixed daily bonus for a single user.
+ * This function calculates and updates the leadership fixed daily bonus for a given user.
+ *
+ * @param object $user The user object.
+ * @param object $slp  Leadership passive settings.
+ *
+ * @since version
+ */
+function process_user_leadership_fixed_daily($user, $slp)
+{
+	$user_id = $user->user_id;
+	$account_type = $user->account_type;
 
-			$income_cycle_global = $user->income_cycle_global;
+	// Fetch entry and freeze settings
+	$se = settings('entry');
+	$sf = settings('freeze');
 
-			$entry  = $se->{$account_type . '_entry'};
-			$factor = $sf->{$account_type . '_percentage'} / 100;
+	$income_cycle_global = $user->income_cycle_global;
 
-			$freeze_limit = $entry * $factor;
+	// Calculate freeze limit based on entry and freeze percentage
+	$entry = $se->{$account_type . '_entry'};
+	$factor = $sf->{$account_type . '_percentage'} / 100;
+	$freeze_limit = $entry * $factor;
 
-			$status = $user->status_global;
+	$status = $user->status_global;
 
-			$count_directs = count(user_directs($user_id));
+	// Count the number of direct referrals
+	$count_directs = count(user_directs($user_id));
 
-			$type_level       = $slp->{$account_type . '_leadership_passive_level'};
-			$required_directs = $slp->{$account_type . '_leadership_passive_sponsored'};
-			$max_daily_income = $slp->{$account_type . '_leadership_passive_max_daily_income'};
-			$income_max       = $slp->{$account_type . '_leadership_passive_maximum'};
+	// Fetch leadership passive settings for the user's account type
+	$type_level = $slp->{$account_type . '_leadership_passive_level'};
+	$required_directs = $slp->{$account_type . '_leadership_passive_sponsored'};
+	$max_daily_income = $slp->{$account_type . '_leadership_passive_max_daily_income'};
+	$income_max = $slp->{$account_type . '_leadership_passive_maximum'};
 
-			$user_bonus_lp = $user->u_bonus_leadership_passive;
-			$income_today  = $user->income_today;
+	$user_bonus_lp = $user->u_bonus_leadership_passive;
+	$income_today = $user->income_today;
 
-			if ($type_level > 0 && $count_directs >= $required_directs && $status === 'active'
-				/*&& (($max_daily_income > 0 && $income_today < $max_daily_income) || !$max_daily_income)
-				&& ($income_max > 0 && $user_bonus_lp < $income_max || !$income_max)*/)
-			{
-				$lp_total = bonus_total_leadership_fixed_daily($user_id)['bonus'];
+	// Check if the user qualifies for leadership fixed daily bonus
+	if ($type_level > 0 && $count_directs >= $required_directs && $status === 'active') {
+		// Calculate total leadership fixed daily bonus
+		$lp_total = bonus_total_leadership_fixed_daily($user_id)['bonus'];
+		$lp_add = $lp_total - $user->bonus_leadership_passive_last;
 
-				$lp_add = $lp_total - $user->bonus_leadership_passive_last;
+		if ($lp_add > 0) {
+			// Apply daily and maximum income limits
+			if ($max_daily_income > 0 && ($income_today + $lp_add) >= $max_daily_income) {
+				$lp_add = non_zero($max_daily_income - $income_today);
+			}
 
-				if ($lp_add > 0)
-				{
-					if ($max_daily_income > 0 && ($income_today + $lp_add) >= $max_daily_income)
-					{
-						$lp_add = non_zero($max_daily_income - $income_today);
-					}
+			if ($income_max > 0 && ($user_bonus_lp + $lp_add) >= $income_max) {
+				$lp_add = non_zero($income_max - $user_bonus_lp);
+			}
 
-					if ($income_max > 0 && ($user_bonus_lp + $lp_add) >= $income_max)
-					{
-						$lp_add = non_zero($income_max - $user_bonus_lp);
-					}
+			// Handle freeze limit logic
+			if ($income_cycle_global >= $freeze_limit) {
+				// Update flushout global and mark the user as inactive
+				crud(
+					'UPDATE network_leadership_passive ' .
+					' SET flushout_global = :flushout_global ' .
+					' WHERE user_id = :user_id',
+					[
+						'flushout_global' => ($user->flushout_global + $lp_add),
+						'user_id' => $user_id
+					]
+				);
 
-					if ($income_cycle_global >= $freeze_limit)
-					{
-//						if ($saf)
-//						{
-//						if ($status === 'active')
-//						{
-						crud(
-							'UPDATE network_leadership_passive ' .
-							' SET flushout_global = :flushout_global ' .
-							' WHERE user_id = :user_id',
-							[
-								'flushout_global' => ($user->flushout_global + $lp_add),
-								'user_id'         => $user_id
-							]
-						);
+				crud(
+					'UPDATE network_users ' .
+					'SET status_global = :status_global, ' .
+					'income_flushout = :income_flushout ' .
+					'WHERE id = :id',
+					[
+						'status_global' => 'inactive',
+						'income_flushout' => ($user->income_flushout + $lp_add),
+						'id' => $user_id
+					]
+				);
 
-						crud(
-							'UPDATE network_users ' .
-							'SET status_global = :status_global, ' .
-							'income_flushout = :income_flushout ' .
-							'WHERE id = :id',
-							[
-								'status_global'   => 'inactive',
-								'income_flushout' => ($user->income_flushout + $lp_add),
-								'id'              => $user_id
-							]
-						);
-//						}
+				// Update leadership passive and user records
+				update_leadership_passive($user, 0, $lp_total);
+				update_user($user, 0);
+			} else {
+				$diff = $freeze_limit - $income_cycle_global;
 
-						update_leadership_passive($user, 0, $lp_total);
-						update_user($user, 0);
-//						}
-					}
-					else
-					{
-						$diff = $freeze_limit - $income_cycle_global;
+				if ($diff < $lp_add) {
+					$flushout_global = $lp_add - $diff;
 
-						if ($diff < $lp_add)
-						{
-							$flushout_global = $lp_add - $diff;
+					// Update flushout global and mark the user as inactive
+					crud(
+						'UPDATE network_leadership_passive ' .
+						' SET flushout_global = :flushout_global ' .
+						' WHERE user_id = :user_id',
+						[
+							'flushout_global' => ($user->flushout_global + $flushout_global),
+							'user_id' => $user_id
+						]
+					);
 
-//							if ($saf)
-//							{
-//							if ($status === 'active')
-//							{
-							crud(
-								'UPDATE network_leadership_passive ' .
-								' SET flushout_global = :flushout_global ' .
-								' WHERE user_id = :user_id',
-								[
-									'flushout_global' => ($user->flushout_global + $flushout_global),
-									'user_id'         => $user_id
-								]
-							);
+					crud(
+						'UPDATE network_users ' .
+						'SET status_global = :status_global, ' .
+						'income_flushout = :income_flushout, ' .
+						'income_cycle_global = :income_cycle_global ' .
+						'WHERE id = :id',
+						[
+							'status_global' => 'inactive',
+							'income_flushout' => ($user->income_flushout + $lp_add),
+							'income_cycle_global' => ($user->income_cycle_global + $diff),
+							'id' => $user_id
+						]
+					);
 
-							crud(
-								'UPDATE network_users ' .
-								'SET status_global = :status_global, ' .
-								'income_flushout = :income_flushout, ' .
-								'income_cycle_global = :income_cycle_global ' .
-								'WHERE id = :id',
-								[
-									'status_global'       => 'inactive',
-									'income_flushout'     => ($user->income_flushout + $lp_add),
-									'income_cycle_global' => ($user->income_cycle_global + $diff),
-									'id'                  => $user_id
-								]
-							);
-//							}
+					// Update leadership passive and user records
+					update_leadership_passive($user, $diff, $lp_total);
+					update_user($user, $diff);
+				} else {
+					// Update income cycle global
+					crud(
+						'UPDATE network_users ' .
+						'SET income_cycle_global = :income_cycle_global ' .
+						'WHERE id = :id',
+						[
+							'income_cycle_global' => ($user->income_cycle_global + $lp_add),
+							'id' => $user_id
+						]
+					);
 
-							update_leadership_passive($user, $diff, $lp_total);
-							update_user($user, $diff);
-//							}
-						}
-						else
-						{
-							crud(
-								'UPDATE network_users ' .
-								'SET income_cycle_global = :income_cycle_global ' .
-								'WHERE id = :id',
-								[
-									'income_cycle_global' => ($user->income_cycle_global + $lp_add),
-									'id'                  => $user_id
-								]
-							);
-
-							update_leadership_passive($user, $lp_add, $lp_total);
-							update_user($user, $lp_add);
-						}
-					}
+					// Update leadership passive and user records
+					update_leadership_passive($user, $lp_add, $lp_total);
+					update_user($user, $lp_add);
 				}
 			}
 		}
@@ -174,9 +173,10 @@ function main()
 }
 
 /**
- * @param $value
+ * Ensure the value is non-negative.
  *
- * @return int|mixed
+ * @param mixed $value The value to check.
+ * @return int|mixed The non-negative value.
  *
  * @since version
  */
@@ -186,9 +186,10 @@ function non_zero($value)
 }
 
 /**
- * @param $type
+ * Fetch settings for a specific type.
  *
- * @return mixed
+ * @param string $type The type of settings to fetch.
+ * @return mixed The settings object.
  *
  * @since version
  */
@@ -199,9 +200,10 @@ function settings($type)
 }
 
 /**
- * @param $user_id
+ * Fetch user details by user ID.
  *
- * @return mixed
+ * @param int $user_id The user ID.
+ * @return mixed The user object.
  *
  * @since version
  */
@@ -216,9 +218,10 @@ function user($user_id)
 }
 
 /**
- * @param $user_id
+ * Fetch commission deduct details for a user.
  *
- * @return mixed
+ * @param int $user_id The user ID.
+ * @return mixed The commission deduct object.
  *
  * @since version
  */
@@ -233,29 +236,26 @@ function user_cd($user_id)
 }
 
 /**
- * @param   array  $head
+ * Calculate leadership fixed daily income for a given level of users.
  *
- * @return array[]
+ * @param array $head An array of sponsor user IDs.
+ * @return array[] An array containing the group of users and their passive income.
  *
  * @since version
  */
 function level_leadership_fixed_daily(array $head = []): array
 {
-	$group   = [];
+	$group = [];
 	$passive = [];
 
-	foreach ($head as $sponsor)
-	{
+	foreach ($head as $sponsor) {
 		$directs = user_directs($sponsor);
 
-		if (!empty($directs))
-		{
-			foreach ($directs as $direct)
-			{
+		if (!empty($directs)) {
+			foreach ($directs as $direct) {
 				$group[] = $direct->id;
 
-				if (empty(user_cd($direct->id)))
-				{
+				if (empty(user_cd($direct->id))) {
 					$passive[] = $direct->fixed_daily_interest;
 				}
 			}
@@ -266,31 +266,12 @@ function level_leadership_fixed_daily(array $head = []): array
 }
 
 /**
- * @param $n
- * @param $level_1
+ * Calculate leadership fixed daily bonus for a given level of indirect users.
  *
- * @return mixed
- *
- * @since version
- */
-function nested($n, $level_1)
-{
-	$result = [$level_1];
-
-	for ($i_i = 2; $i_i <= $n; $i_i++)
-	{
-		$result[] = level_leadership_fixed_daily(array_reverse($result)[0][0]);
-	}
-
-	return array_reverse($result)[0];
-}
-
-/**
- * @param $indirect
- * @param $share
- * @param $share_cut
- *
- * @return float|int
+ * @param array $indirect An array of indirect users.
+ * @param float $share The share percentage.
+ * @param float $share_cut The share cut percentage.
+ * @return float|int The calculated leadership fixed daily bonus.
  *
  * @since version
  */
@@ -298,10 +279,8 @@ function get_leadership_fixed_daily($indirect, $share, $share_cut)
 {
 	$leadership = 0;
 
-	if ($indirect)
-	{
-		foreach ($indirect as $fixed_daily)
-		{
+	if ($indirect) {
+		foreach ($indirect as $fixed_daily) {
 			$leadership += $fixed_daily * $share * $share_cut / 100 / 100;
 		}
 	}
@@ -310,42 +289,39 @@ function get_leadership_fixed_daily($indirect, $share, $share_cut)
 }
 
 /**
- * @param $user_id
+ * Calculate the total leadership fixed daily bonus for a user.
  *
- * @return array
+ * @param int $user_id The user ID.
+ * @return array An array containing the total members and bonus.
  *
  * @since version
  */
 function bonus_total_leadership_fixed_daily($user_id): array
 {
-	$level_1 = level_leadership_fixed_daily([$user_id]);
-
 	$account_type = user($user_id)->account_type;
-
 	$settings_leadership_passive = settings('leadership_passive');
 
-	$member = count($level_1[0]);
-	$bonus  = get_leadership_fixed_daily(
-		$level_1[1],
-		$settings_leadership_passive->{$account_type . '_leadership_passive_share_1'},
-		$settings_leadership_passive->{$account_type . '_leadership_passive_share_cut_1'}
-	);
+	$total_members = 0;
+	$total_bonus = 0;
 
-	$type_level = $settings_leadership_passive->{$account_type . '_leadership_passive_level'};
+	// Start with the user's direct referrals
+	$current_level = [$user_id];
 
-	for ($i_i = 2; $i_i <= $type_level; $i_i++)
-	{
-		$member += count(nested($i_i, $level_1)[0]);
+	for ($level = 1; $level <= $settings_leadership_passive->{$account_type . '_leadership_passive_level'}; $level++) {
+		// Get users and their passive income for the current level
+		[$current_level, $passive] = level_leadership_fixed_daily($current_level);
 
-		$bonus += get_leadership_fixed_daily(
-			nested($i_i, $level_1)[1],
-			$settings_leadership_passive->{$account_type . '_leadership_passive_share_' . $i_i},
-			$settings_leadership_passive->{$account_type . '_leadership_passive_share_cut_' . $i_i}
+		// Add members and calculate bonus for the current level
+		$total_members += count($current_level);
+		$total_bonus += get_leadership_fixed_daily(
+			$passive,
+			$settings_leadership_passive->{$account_type . '_leadership_passive_share_' . $level},
+			$settings_leadership_passive->{$account_type . '_leadership_passive_share_cut_' . $level}
 		);
 	}
 
 	return [
-		'member' => $member,
-		'bonus'  => $bonus
+		'member' => $total_members,
+		'bonus' => $total_bonus
 	];
 }

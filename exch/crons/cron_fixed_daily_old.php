@@ -7,8 +7,10 @@ require_once 'Cron_Db_Connect.php';
 require_once 'cron_query_local.php';
 require_once 'cron_leadership_passive.php';
 require_once 'cron_fixed_daily_leadership.php';
+//require_once 'cron_income_local.php';
 
 use Exception;
+
 use DateTime;
 use DateTimeZone;
 
@@ -18,78 +20,90 @@ use function Cron\Database\Query\fetch_all;
 use function Cron\Database\Query\fetch;
 use function Cron\Database\Query\crud;
 
+//use function Cron\Income\main as income_global;
+
 use function Cron\Leadership\Fixed_Daily\main as leadership_fixed_daily;
 
+main();
+
 /**
- * Main function to process fixed daily income for all users.
- * This function iterates through all users and processes their fixed daily income.
- * It calculates the maturity, required directs, and actual directs for each user.
- * If the user's account type is 'fixed_deposit', it calculates the fixed deposit income.
- * If the user's account type is 'savings', it calculates the savings account income.
- * 
- * @param mixed $leadership
- * @return void
- * 
+ *
+ *
  * @since version
  */
-function main($leadership = false)
+function main()
 {
-	// Connect to the database
 	$dbh = DB_Cron::connect();
 
-	// Fetch investment settings
 	$si = settings('investment');
 
-	// Fetch all users with fixed daily income
 	$fdu = fixed_daily_users();
 
 	if (!empty($fdu)) {
 		try {
-			// Begin a database transaction
 			$dbh->beginTransaction();
 
-			// Process each user's fixed daily income
 			foreach ($fdu as $fd) {
 				$account_type = $fd->account_type;
 
-				// Fetch maturity, required directs, and actual directs for the user
+				//                $interval = $si->{$account_type . '_fixed_daily_interval'};
 				$maturity = $si->{$account_type . '_fixed_daily_maturity'};
 				$required_directs = $si->{$account_type . '_fixed_daily_required_directs'};
 				$actual_directs = directs_valid($fd->user_id);
 
-				// Fetch principal, interest, and donation rate for the user
+				//                $interval = $si->{$fd->account_type . '_fixed_daily_interval'};
+
 				$principal = $si->{$fd->account_type . '_fixed_daily_principal'};
+				//                $principal_cut = $si->{$fd->account_type . '_fixed_daily_principal_cut'} / 100;
+
+				//                $principal_cut = $principal_cut > 0 ?: 1;
+
 				$interest = $si->{$fd->account_type . '_fixed_daily_interest'} / 100;
 				$rate_donation = $si->{$fd->account_type . '_fixed_daily_donation'} / 100;
 
-				// Check if the user qualifies for fixed daily income
+				//                $diff = time() - $fd->date_last_cron;
+
 				if (
 					(($required_directs && $actual_directs >= $required_directs) || !$required_directs)
 					&& !$fd->processing
 					&& $principal > 0
 					&& $fd->day < $maturity
+					/*&& $diff >= $interval*/
 				) {
-					// Calculate daily raw income, value after donation, and donation amount
+					//                    $fd->day++;
+
 					$daily_raw = $interest * $principal;
 					$value_now = $daily_raw * (1 - $rate_donation);
 					$donation_new = $daily_raw * $rate_donation;
 
-					// Update the user's fixed daily income
+					//                    $principal_new = $principal * /*$principal_cut **/ (1 + $interest * $maturity);
+//                    $value_now = ($principal_new / $maturity) * (1 - $rate_donation);
+
+					//                    $donation_new = ($principal_new / $maturity) * $rate_donation;
+
+					//                    try {
+//                        $dbh->beginTransaction();
+
 					update_fixed_daily($fd, $value_now, $donation_new);
+					//					update_user($fd, $value_now, $donation_new);
+
+					//					logs($user, $value_now);
+
+					//                        $dbh->commit();
+//                    } catch (Exception $e) {
+//                        try {
+//                            $dbh->rollback();
+//                        } catch (Exception $e2) {
+//                        }
+//                    }
 				}
 			}
 
-			// Process mature accounts
 			mature();
+			// leadership_fixed_daily();
 
-			if ($leadership) {
-				leadership_fixed_daily();
-			}
-
-			// Commit the transaction
 			$dbh->commit();
 		} catch (Exception $e) {
-			// Rollback the transaction in case of an error
 			try {
 				$dbh->rollback();
 			} catch (Exception $e2) {
@@ -100,10 +114,9 @@ function main($leadership = false)
 }
 
 /**
- * Fetch settings for a specific type.
+ * @param $type
  *
- * @param string $type The type of settings to fetch.
- * @return mixed The settings object.
+ * @return mixed
  *
  * @since version
  */
@@ -116,9 +129,8 @@ function settings($type)
 }
 
 /**
- * Fetch all users with fixed daily income.
  *
- * @return array|false An array of users with fixed daily income, or false if none found.
+ * @return array|false
  *
  * @since version
  */
@@ -133,41 +145,44 @@ function fixed_daily_users()
 }
 
 /**
- * Update the fixed daily income for a user.
+ * @param $user
+ * @param $value_now
  *
- * @param object $user The user object.
- * @param float $value_now The current value to add.
- * @param float $donation_new The new donation to add.
+ * @param $donation_new
  *
  * @since version
  */
 function update_fixed_daily($user, $value_now, $donation_new)
 {
-	// Fetch entry and freeze settings
+	//	$sp = settings('plans');
+//	$sa = settings('ancillaries');
 	$se = settings('entry');
 	$sf = settings('freeze');
+
+	//	$saf = $sp->account_freeze;
 
 	$user_id = $user->user_id;
 	$account_type = $user->account_type;
 
 	$income_cycle_global = $user->income_cycle_global;
 
-	// Calculate freeze limit based on entry and freeze percentage
 	$entry = $se->{$account_type . '_entry'};
 	$factor = $sf->{$account_type . '_percentage'} / 100;
+
 	$freeze_limit = $entry * $factor;
 
 	$status = $user->status_global;
 
-	// Get the current time
 	$time = new DateTime('now');
 	$time->setTimezone(new DateTimeZone('Asia/Manila'));
 	$now = $time->format('U');
 
-	// Check if the user's income cycle has reached the freeze limit
 	if ($income_cycle_global >= $freeze_limit) {
+		//		if ($saf)
+//		{
+//			$flushout_global = $value_now;
+
 		if ($status === 'active') {
-			// Update flushout global and mark the user as inactive
 			crud(
 				'UPDATE network_fixed_daily ' .
 				' SET flushout_global = :flushout_global ' .
@@ -190,14 +205,16 @@ function update_fixed_daily($user, $value_now, $donation_new)
 				]
 			);
 		}
+		//		}
 	} else {
 		$diff = $freeze_limit - $income_cycle_global;
 
 		if ($diff < $value_now) {
+			//			if ($saf)
+//			{
 			$flushout_global = $value_now - $diff;
 
 			if ($status === 'active') {
-				// Update fixed daily and user details for partial freeze
 				crud(
 					'UPDATE network_fixed_daily ' .
 					' SET day = :day ' .
@@ -207,11 +224,16 @@ function update_fixed_daily($user, $value_now, $donation_new)
 					', date_last_cron = :date_last_cron ' .
 					' WHERE fixed_daily_id = :fixed_daily_id',
 					[
-						'day' => ($user->day + 1),
-						'value_last' => ($user->value_last + $diff),
-						'flushout_global' => ($user->flushout_global + $flushout_global),
-						'time_last' => $now,
-						'fixed_daily_id' => $user->fixed_daily_id,
+						'day' => ($user->day + 1)
+						,
+						'value_last' => ($user->value_last + $diff)
+						,
+						'flushout_global' => ($user->flushout_global + $flushout_global)
+						,
+						'time_last' => $now
+						,
+						'fixed_daily_id' => $user->fixed_daily_id
+						,
 						'date_last_cron' => time()
 					]
 				);
@@ -230,11 +252,10 @@ function update_fixed_daily($user, $value_now, $donation_new)
 					]
 				);
 
-				// Update the user's income details
 				update_user($user, $diff, $donation_new);
 			}
+			//			}
 		} else {
-			// Update fixed daily and user details for normal income
 			crud(
 				'UPDATE network_fixed_daily ' .
 				' SET day = :day ' .
@@ -243,10 +264,14 @@ function update_fixed_daily($user, $value_now, $donation_new)
 				', date_last_cron = :date_last_cron ' .
 				' WHERE fixed_daily_id = :fixed_daily_id',
 				[
-					'day' => ($user->day + 1),
-					'value_last' => ($user->value_last + $value_now),
-					'time_last' => $now,
-					'fixed_daily_id' => $user->fixed_daily_id,
+					'day' => ($user->day + 1)
+					,
+					'value_last' => ($user->value_last + $value_now)
+					,
+					'time_last' => $now
+					,
+					'fixed_daily_id' => $user->fixed_daily_id
+					,
 					'date_last_cron' => time()
 				]
 			);
@@ -261,68 +286,21 @@ function update_fixed_daily($user, $value_now, $donation_new)
 				]
 			);
 
-			// Update the user's income details
 			update_user($user, $value_now, $donation_new);
 		}
 	}
 }
 
 /**
- * Calculate the total fixed daily income for a user based on selected components.
+ * @param $user
+ * @param $value_now
+ * @param $donation_new
  *
- * @param object $user The user object.
- * @param array $options An associative array specifying which components to include.
- *                       Example: ['fixed_daily_interest' => true, 'donation' => true]
- * @return float|int The total fixed daily income.
  *
  * @since version
  */
-function calculate_fixed_daily_income(
-	$user,
-	$options = [
-		'fixed_daily_interest' => true,
-		'donation' => true
-	]
-) {
-	$income = 0;
-
-	// Add fixed daily interest if enabled
-	if ($options['fixed_daily_interest'] && isset($user->fixed_daily_interest)) {
-		$income += $user->fixed_daily_interest;
-	}
-
-	// Add donation if enabled
-	if ($options['donation'] && isset($user->donation)) {
-		$income += $user->donation;
-	}
-
-	return $income;
-}
-
-/**
- * Update user details with the fixed daily income.
- *
- * @param object $user The user object.
- * @param float $value_now The current value to add.
- * @param float $donation_new The new donation to add.
- * @param array $options An associative array specifying which components to include.
- *                       Example: ['fixed_daily_interest' => true, 'donation' => true]
- *
- * @since version
- */
-function update_user(
-	$user,
-	$value_now,
-	$donation_new,
-	$options = [
-		'fixed_daily_interest' => true,
-		'donation' => true
-	]
-) {
-	// Calculate total fixed daily income based on selected components
-	$income = calculate_fixed_daily_income($user, $options);
-
-	// Update the user's donation, fixed daily interest, and balance
+function update_user($user, $value_now, $donation_new)
+{
 	crud(
 		'UPDATE network_users ' .
 		'SET donation = :donation, ' .
@@ -330,18 +308,58 @@ function update_user(
 		'fixed_daily_balance = :fixed_daily_balance ' .
 		'WHERE id = :id',
 		[
-			'donation' => ($user->donation + ($options['donation'] ? $donation_new : 0)),
-			'fixed_daily_interest' => ($user->fixed_daily_interest + ($options['fixed_daily_interest'] ? $value_now : 0)),
-			'fixed_daily_balance' => ($user->fixed_daily_balance + $income),
+			'donation' => ($user->donation + $donation_new),
+			'fixed_daily_interest' => ($user->fixed_daily_interest + $value_now),
+			'fixed_daily_balance' => ($user->fixed_daily_balance + $value_now),
 			'id' => $user->user_id
 		]
 	);
 }
 
 /**
- * Fetch all fixed daily income records.
+ * @param $user
+ * @param $value_now
  *
- * @return array|false An array of fixed daily income records, or false if none found.
+ *
+ * @since version
+ */
+//function logs($user, $value_now)
+//{
+//	$time = new DateTime('now');
+//	$time->setTimezone(new DateTimeZone('Asia/Manila'));
+//	$now = $time->format('U');
+//
+//	$code_type_mod = settings('entry')->{$user->account_type . '_package_name'};
+//
+//	$activity = '<b>' . ucfirst($code_type_mod) . ' ' . settings('plans')->fixed_daily_name . ' of ' .
+//		number_format($value_now, 2) . settings('ancillaries')->currency .
+//		' was added to </b><a href="' . sef(44) . qs() . 'uid=' . $user->id . '">' . $user->username . '</a>.';
+//
+//	crud(
+//		'INSERT ' .
+//		'INTO network_activity (' .
+//		'user_id, ' .
+//		'sponsor_id, ' .
+//		'activity, ' .
+//		'activity_date' .
+//		') VALUES (' .
+//		':user_id, ' .
+//		':sponsor_id, ' .
+//		':activity, ' .
+//		':activity_date' .
+//		')',
+//		[
+//			'user_id'       => $user->id,
+//			'sponsor_id'    => $user->sponsor_id,
+//			'activity'      => $activity,
+//			'activity_date' => $now
+//		]
+//	);
+//}
+
+/**
+ *
+ * @return array|false
  *
  * @since version
  */
@@ -354,7 +372,7 @@ function fixed_daily()
 }
 
 /**
- * Process mature fixed daily income accounts.
+ *
  *
  * @since version
  */
@@ -362,29 +380,22 @@ function mature()
 {
 	$dbh = DB_Cron::connect();
 
-	// Fetch investment settings
 	$si = settings('investment');
 
-	// Fetch all users with fixed daily income
 	$results = fixed_daily_users();
 
 	if (!empty($results)) {
 		foreach ($results as $result) {
 			$maturity = $si->{$result->account_type . '_fixed_daily_maturity'};
 
-			// Check if the account has matured and hasn't been marked as mature yet
 			if ($result->day === $maturity && (int) $result->time_mature === 0) {
 				try {
-					// Begin a database transaction
 					$dbh->beginTransaction();
 
-					// Mark the account as mature
 					update_fixed_daily_time_mature($result);
 
-					// Commit the transaction
 					$dbh->commit();
 				} catch (Exception $e) {
-					// Rollback the transaction in case of an error
 					try {
 						$dbh->rollback();
 					} catch (Exception $e2) {
@@ -396,20 +407,17 @@ function mature()
 }
 
 /**
- * Mark a fixed daily income account as mature.
+ * @param $result
  *
- * @param object $result The fixed daily income record.
  *
  * @since version
  */
 function update_fixed_daily_time_mature($result)
 {
-	// Get the current time
 	$time = new DateTime('now');
 	$time->setTimezone(new DateTimeZone('Asia/Manila'));
 	$now = $time->format('U');
 
-	// Update the time_mature field for the account
 	crud(
 		'UPDATE network_fixed_daily ' .
 		'SET time_mature = :time_mature ' .
@@ -422,10 +430,9 @@ function update_fixed_daily_time_mature($result)
 }
 
 /**
- * Fetch valid direct referrals for a user.
+ * @param $user_id
  *
- * @param int $user_id The user ID.
- * @return array|false An array of valid direct referrals, or false if none found.
+ * @return array|false
  *
  * @since version
  */

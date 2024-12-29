@@ -22,10 +22,8 @@ use function BPL\Mods\Helpers\settings;
  */
 function main()
 {
-	// Fetch leadership passive settings
 	$slp = settings('leadership_passive');
 
-	// Iterate through each user and process their leadership passive bonuses
 	foreach (users() as $user) {
 		process_user_leadership_passive($user, $slp);
 	}
@@ -33,36 +31,34 @@ function main()
 
 /**
  * Process leadership passive bonus for a single user.
- * This function calculates and updates the leadership passive bonus for a given user based on their account type and direct referrals.
+ * This function calculates and updates the leadership passive bonus for a given user.
  *
  * @param object $user The user object.
  * @param object $slp  Leadership passive settings.
+ *
+ * @since version
  */
 function process_user_leadership_passive($user, $slp)
 {
-	// Fetch user account type and count of direct referrals
 	$account_type = $user->account_type;
 	$count_directs = count(user_directs($user->user_id));
 
-	// Fetch leadership passive settings for the user's account type
 	$type_level = $slp->{$account_type . '_leadership_passive_level'};
 	$required_directs = $slp->{$account_type . '_leadership_passive_sponsored'};
 	$max_daily_income = $slp->{$account_type . '_leadership_passive_max_daily_income'};
 	$income_max = $slp->{$account_type . '_leadership_passive_maximum'};
 
-	// Fetch user's current leadership passive bonus and income today
 	$user_bonus_lp = $user->bonus_leadership_passive;
 	$ulp = user_leadership_passive($user->id);
 	$income_today = $ulp->income_today;
 
 	// Check if the user qualifies for leadership passive bonus
 	if ($type_level > 0 && $count_directs >= $required_directs) {
-		// Calculate total leadership passive bonus
 		$lp_total = bonus_total($user);
 		$lp_add = $lp_total - $ulp->bonus_leadership_passive_last;
 
-		// Apply daily and maximum income limits
 		if ($lp_add > 0) {
+			// Apply daily and maximum income limits
 			if ($max_daily_income > 0 && ($income_today + $lp_add) >= $max_daily_income) {
 				$lp_add = non_zero($max_daily_income - $income_today);
 			}
@@ -80,8 +76,27 @@ function process_user_leadership_passive($user, $slp)
 }
 
 /**
+ * Insert a new record into the network_leadership_passive table.
+ * This function is called when a user becomes eligible for leadership passive bonuses.
+ *
+ * @param int $user_id The user ID.
+ *
+ * @since version
+ */
+function insert_leadership_passive($user_id)
+{
+	// Check if the user already has a leadership passive record
+	if (empty(user_leadership_passive($user_id))) {
+		insert(
+			'network_leadership_passive',
+			['user_id'],
+			[db()->quote($user_id)]
+		);
+	}
+}
+
+/**
  * Ensure the value is non-negative.
- * This function returns the value if it is non-negative; otherwise, it returns 0.
  *
  * @param mixed $value The value to check.
  * @return int|mixed The non-negative value.
@@ -104,7 +119,6 @@ function non_zero($value)
  */
 function bonus_total($user)
 {
-	// Fetch leadership passive settings
 	$slp = settings('leadership_passive');
 	$account_type = $user->account_type;
 	$required_directs = $slp->{$account_type . '_leadership_passive_sponsored'};
@@ -135,43 +149,8 @@ function bonus_total($user)
  */
 function leadership_passive_level($level, $user)
 {
-	// Fetch users for the given level
 	$users = get_level_users($level, $user);
-	return bonus_leadership_passive($level, $users, [
-		'top_up' => false,
-		'fast_track' => true,
-		'fixed_daily' => false,
-		'compound_daily' => false
-	]);
-}
-
-/**
- * Retrieve direct referrals for a given list of users.
- * This function takes an array of users and returns their direct referrals.
- * It is used to traverse the user network level by level.
- *
- * @param array $lvl_1 An array of user objects for whom direct referrals are to be fetched.
- * @return array An array of direct referrals for the provided users.
- *
- * @since version
- */
-function level_directs(array $lvl_1 = []): array
-{
-	$lvl_directs = [];
-
-	if (!empty($lvl_1)) {
-		foreach ($lvl_1 as $s1) {
-			$directs = user_directs($s1->id);
-
-			if (!empty($directs)) {
-				foreach ($directs as $direct) {
-					$lvl_directs[] = $direct;
-				}
-			}
-		}
-	}
-
-	return $lvl_directs;
+	return bonus_leadership_passive($level, $users);
 }
 
 /**
@@ -187,56 +166,10 @@ function level_directs(array $lvl_1 = []): array
 function get_level_users($level, $user)
 {
 	$users = [$user];
-	// Iterate through each level to fetch users
 	for ($i = 1; $i <= $level; $i++) {
 		$users = level_directs($users);
 	}
 	return $users;
-}
-
-/**
- * Calculate the total passive income for a user based on selected components.
- * This function allows for dynamic selection of which income components to include.
- *
- * @param object $user The user object.
- * @param array $options An associative array specifying which components to include.
- *                       Example: ['top_up' => true, 'fast_track' => true, 'fixed_daily' => true, 'compound_daily' => true]
- * @return float|int The total passive income.
- *
- * @since version
- */
-function calculate_passive_income(
-	$user,
-	$options = [
-		'top_up' => true,
-		'fast_track' => true,
-		'fixed_daily' => true,
-		'compound_daily' => true
-	]
-) {
-	$passive = 0;
-
-	// Add top-up interest if enabled
-	if ($options['top_up'] && isset($user->top_up_interest)) {
-		$passive += $user->top_up_interest;
-	}
-
-	// Add fast-track interest if enabled
-	if ($options['fast_track'] && isset($user->fast_track_interest)) {
-		$passive += $user->fast_track_interest;
-	}
-
-	// Add fixed daily interest if enabled
-	if ($options['fixed_daily'] && isset($user->fixed_daily_interest)) {
-		$passive += $user->fixed_daily_interest;
-	}
-
-	// Add compound daily interest if enabled
-	if ($options['compound_daily'] && isset($user->compound_daily_interest)) {
-		$passive += $user->compound_daily_interest;
-	}
-
-	return $passive;
 }
 
 /**
@@ -245,36 +178,23 @@ function calculate_passive_income(
  *
  * @param int $level The level.
  * @param array $users The users.
- * @param array $options An associative array specifying which components to include in passive income calculation.
- *                       Example: ['top_up' => true, 'fast_track' => true, 'fixed_daily' => true, 'compound_daily' => true]
  * @return float|int The bonus.
  *
  * @since version
  */
-function bonus_leadership_passive(
-	$level,
-	$users,
-	$options = [
-		'top_up' => true,
-		'fast_track' => true,
-		'fixed_daily' => true,
-		'compound_daily' => true
-	]
-) {
+function bonus_leadership_passive($level, $users)
+{
 	$bonus = 0;
 
 	if (!empty($users)) {
 		foreach ($users as $user) {
-			// Fetch user account type and leadership passive settings
 			$account_type = $user->account_type;
 			$slp = settings('leadership_passive');
 
-			// Calculate share and share cut percentages
 			$share = $slp->{$account_type . '_leadership_passive_share_' . $level} / 100;
 			$share_cut = $slp->{$account_type . '_leadership_passive_share_cut_' . $level} / 100;
 
-			// Calculate total passive income based on selected components
-			$passive = calculate_passive_income($user, $options);
+			$passive = $user->top_up_interest + $user->fast_track_interest + $user->fixed_daily_interest + $user->compound_daily_interest;
 			$bonus += $passive * $share * $share_cut;
 		}
 	}
@@ -313,7 +233,6 @@ function members_total($user)
 	$slp = settings('leadership_passive');
 	$type_level = $slp->{$user->account_type . '_leadership_passive_level'};
 
-	// Sum up members for each level
 	for ($i = 1; $i <= $type_level; $i++) {
 		$total += members_level($i, $user);
 	}
@@ -332,7 +251,6 @@ function members_total($user)
  */
 function view($user_id): string
 {
-	// Fetch user and leadership passive settings
 	$user = user($user_id);
 	$account_type = $user->account_type;
 	$slp = settings('leadership_passive');
@@ -340,11 +258,9 @@ function view($user_id): string
 	$required_directs = $slp->{$account_type . '_leadership_passive_sponsored'};
 	$level = $slp->{$account_type . '_leadership_passive_level'};
 
-	// Determine status (active/inactive)
 	$status = count(user_directs($user->id)) >= $required_directs ? '' : ' (inactive)';
 	$currency = settings('ancillaries')->currency;
 
-	// Generate HTML table
 	$str = '<h3>List ' . settings('plans')->leadership_passive_name . '</h3>
         <table class="category table table-striped table-bordered table-hover">
             <thead>
@@ -357,12 +273,10 @@ function view($user_id): string
             </thead>
             <tbody>';
 
-	// Add rows for each level
 	for ($i = 1; $i <= $level; $i++) {
 		$str .= view_row($i, $user);
 	}
 
-	// Add total row
 	$str .= '<tr>
                 <td><div style="text-align: center"><strong>Total' . $status . '</strong></div></td>
                 <td><div style="text-align: center">' . members_total($user) . '</div></td>
@@ -387,17 +301,14 @@ function view($user_id): string
  */
 function view_row($level, $user): string
 {
-	// Fetch members and bonus for the given level
 	$members = members_level($level, $user);
 	$bonus = leadership_passive_level($level, $user);
 
-	// Fetch share and share cut percentages
 	$slp = settings('leadership_passive');
 	$share = $slp->{$user->account_type . '_leadership_passive_share_' . $level};
 	$share_cut = $slp->{$user->account_type . '_leadership_passive_share_cut_' . $level};
 	$percentage = $share * $share_cut / 100;
 
-	// Generate HTML row
 	$str = '<tr>
                 <td><div style="text-align: center"' . ($level === 1 ? ' style="color: red"' : '') . '>
                     <strong>' . ($level === 1 ? ' (Direct)' : $level) . '</strong></div></td>
@@ -410,6 +321,34 @@ function view_row($level, $user): string
             </tr>';
 
 	return $str;
+}
+
+/**
+ * Retrieve direct referrals for a given list of users.
+ * This function takes an array of users and returns their direct referrals.
+ *
+ * @param array $lvl_1 An array of user objects for whom direct referrals are to be fetched.
+ * @return array An array of direct referrals for the provided users.
+ *
+ * @since version
+ */
+function level_directs(array $lvl_1 = []): array
+{
+	$lvl_directs = [];
+
+	if (!empty($lvl_1)) {
+		foreach ($lvl_1 as $s1) {
+			$directs = user_directs($s1->id);
+
+			if (!empty($directs)) {
+				foreach ($directs as $direct) {
+					$lvl_directs[] = $direct;
+				}
+			}
+		}
+	}
+
+	return $lvl_directs;
 }
 
 /**
@@ -492,7 +431,6 @@ function update_user($bonus, $user_id)
 {
 	$field_user = ['bonus_leadership_passive = bonus_leadership_passive + ' . $bonus];
 
-	// Update balance or payout transfer based on withdrawal mode
 	if (settings('ancillaries')->withdrawal_mode === 'standard') {
 		$field_user[] = 'balance = balance + ' . $bonus;
 	} else {
@@ -504,99 +442,6 @@ function update_user($bonus, $user_id)
 		$field_user,
 		['id = ' . db()->quote($user_id)]
 	);
-}
-
-/**
- * Log leadership passive entry activity.
- * This function logs the activity when a user enters the leadership passive program.
- *
- * @param int $insert_id The user ID.
- * @param string $code_type The code type.
- * @param string $username The username.
- * @param string $sponsor The sponsor username.
- * @param string $date The activity date.
- * @param string $prov The provision type.
- *
- * @since version
- */
-function logs_leadership_passive($insert_id, $code_type, $username, $sponsor, $date, $prov)
-{
-	$db = db();
-
-	$settings_plans = settings('plans');
-
-	$sponsor_id = '';
-
-	// Fetch sponsor ID if available
-	$user_sponsor = user_username($sponsor);
-	if (!empty($user_sponsor)) {
-		$sponsor_id = $user_sponsor[0]->id;
-	}
-
-	// Generate activity message
-	$activity = '<b>' . ucwords($settings_plans->leadership_passive_name) . ' Entry: </b> <a href="' .
-		sef(44) . qs() . 'uid=' . $insert_id . '">' . $username . '</a> has entered into ' .
-		ucwords($settings_plans->leadership_passive_name) . ' upon ' .
-		ucfirst(settings('entry')->{$code_type . '_package_name'}) . source($prov) . '.';
-
-	// Insert activity into the database
-	insert(
-		'network_activity',
-		[
-			'user_id',
-			'sponsor_id',
-			'activity',
-			'activity_date'
-		],
-		[
-			$db->quote($insert_id),
-			$db->quote($sponsor_id),
-			$db->quote($activity),
-			$db->quote($date)
-		]
-	);
-}
-
-/**
- * Determine the source of the leadership passive entry.
- * This function returns the source type based on the provision.
- *
- * @param string $prov The provision type.
- * @return string The source type.
- *
- * @since version
- */
-function source($prov): string
-{
-	$source = ' Sign Up';
-
-	if ($prov === 'activate') {
-		$source = ' Activation';
-	} elseif ($prov === 'upgrade') {
-		$source = ' Upgrade';
-	}
-
-	return $source;
-}
-
-/**
- * Fetch user details by username.
- * This function retrieves user details based on the username.
- *
- * @param string $username The username.
- * @return array The user details.
- *
- * @since version
- */
-function user_username($username)
-{
-	$db = db();
-
-	return $db->setQuery(
-		'SELECT * ' .
-		'FROM network_users ' .
-		'WHERE username = ' . $db->quote($username)
-	)->loadObjectList();
 }
 
 /**
@@ -612,13 +457,6 @@ function log_activity($user, $bonus)
 {
 	$db = db();
 
-	// Generate activity message
-	$activity = '<b>' . settings('plans')->leadership_passive_name .
-		' Bonus: </b> <a href="' . sef(44) . qs() . 'uid=' . $user->id . '">' .
-		$user->username . '</a> has earned ' . number_format($bonus, 2) .
-		' ' . settings('ancillaries')->currency;
-
-	// Insert activity into the database
 	insert(
 		'network_activity',
 		[
@@ -630,7 +468,12 @@ function log_activity($user, $bonus)
 		[
 			$db->quote($user->id),
 			$db->quote($user->sponsor_id),
-			$db->quote($activity),
+			$db->quote(
+				'<b>' . settings('plans')->leadership_passive_name .
+				' Bonus: </b> <a href="' . sef(44) . qs() . 'uid=' . $user->id . '">' .
+				$user->username . '</a> has earned ' . number_format($bonus, 2) .
+				' ' . settings('ancillaries')->currency
+			),
 			($db->quote(time()))
 		]
 	);

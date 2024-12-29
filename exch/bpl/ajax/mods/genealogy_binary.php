@@ -9,8 +9,8 @@ use function BPL\Mods\Local\Database\Query\fetch_all;
 use function BPL\Mods\Local\Helpers\settings;
 
 // Input validation with meaningful defaults
-$id_user = filter_input(INPUT_POST, 'id_user', FILTER_VALIDATE_INT) ?: 0;
-$plan = filter_input(INPUT_POST, 'plan', FILTER_SANITIZE_FULL_SPECIAL_CHARS) ?: '';
+$id_user = filter_input(INPUT_POST, 'id_user', FILTER_VALIDATE_INT) ?? 0;
+$plan = filter_input(INPUT_POST, 'plan', FILTER_SANITIZE_FULL_SPECIAL_CHARS) ?? '';
 
 try {
 	echo generateNetworkTree($id_user, $plan);
@@ -19,6 +19,14 @@ try {
 	echo json_encode(['error' => $e->getMessage()]);
 }
 
+/**
+ * Generates a JSON representation of the network tree
+ * 
+ * @param int $id_user User ID to generate tree for
+ * @param string $plan Selected plan type
+ * @return string JSON representation of the network tree
+ * @throws Exception If invalid parameters provided
+ */
 function generateNetworkTree(int $id_user, string $plan): string
 {
 	if (!$id_user || !$plan) {
@@ -34,39 +42,25 @@ function generateNetworkTree(int $id_user, string $plan): string
 	return json_encode(buildTreeData($head, $plan));
 }
 
-function buildTreeData(object $user, string $plan): array
+function buildTreeData(object $user): array
 {
 	// Step 1: Build the parent node
-	$tree = [
+	$data = [
 		'username' => $user->username,
-		'details' => buildUserDetails($user, $plan)
+		'details' => buildUserDetails($user)
 	];
 
 	// Step 2: Get and process direct children
-	$children = getBinaryDownlines($user->id);
+	$children = getDownlines($user->id);
 
-	if (!empty($children)) {
-		$tree['children'] = array_map(
-			function ($child) use ($plan) {
-				$childNode = [
-					'username' => $child->username,
-					'details' => buildUserDetails($child, $plan)
-				];
-
-				// Get and process grandchildren
-				$grandchildren = getBinaryDownlines($child->id);
-
-				if (!empty($grandchildren)) {
-					$childNode['children'] = buildGrandchildrenNodes($grandchildren, $plan);
-				}
-
-				return $childNode;
-			},
+	if ($children) {
+		$data['children'] = array_map(
+			fn($child) => buildTreeData($child),
 			$children
 		);
 	}
 
-	return $tree;
+	return $data;
 }
 
 /**
@@ -75,7 +69,7 @@ function buildTreeData(object $user, string $plan): array
  * @param int $userId Parent user ID
  * @return array Array of user objects
  */
-function getBinaryDownlines(int $userId): array
+function getDownlines(int $userId): array
 {
 	return fetch_all(
 		'SELECT * ' .
@@ -91,27 +85,7 @@ function getBinaryDownlines(int $userId): array
 	);
 }
 
-/**
- * Builds nodes for grandchildren level
- * 
- * @param array $grandchildren Array of grandchild user objects
- * @param string $plan Plan type
- * @return array Processed grandchildren nodes
- */
-function buildGrandchildrenNodes(array $grandchildren, string $plan): array
-{
-	return array_map(
-		function ($grandchild) use ($plan) {
-			return [
-				'username' => $grandchild->username,
-				'details' => buildUserDetails($grandchild, $plan)
-			];
-		},
-		$grandchildren
-	);
-}
-
-function buildUserDetails(object $user, string $plan): array
+function buildUserDetails(object $user): array
 {
 	$balance = number_format($user->payout_transfer, 2);
 
@@ -140,14 +114,4 @@ function userBinary($id_user)
 		'WHERE u.id = :user_id',
 		['user_id' => $id_user]
 	);
-}
-
-/**
- * Debug function for development
- */
-function debug($data, $label = '')
-{
-	echo "\n/* Debug $label */\n";
-	print_r($data);
-	echo "\n/* End Debug $label */\n";
 }
