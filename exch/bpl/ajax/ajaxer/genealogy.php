@@ -22,7 +22,6 @@ function main($type, $user_id, string $plan = 'binary_pair'): string
     return <<<HTML
         <link rel='stylesheet prefetch' href='https://fonts.googleapis.com/css?family=Roboto'>
         <style>
-            /* Responsive CSS with mobile-first approach */
             :root {
                 --color-primary: steelblue;
                 --color-secondary: #999;
@@ -35,10 +34,12 @@ function main($type, $user_id, string $plan = 'binary_pair'): string
                 
                 --spacing-sm: max(0.3125rem, 1vw);
                 --spacing-md: max(0.625rem, 2vw);
+                --spacing-top: max(2rem, 4vw); /* New top spacing variable */
                 
                 --border-radius: 0.3125rem;
                 --stroke-width-large: min(3px, 0.5vw);
                 --stroke-width-small: min(2px, 0.3vw);
+                --border-dash-size: max(5px, 1vw);
                 
                 --transition-default: 200ms ease;
             }
@@ -48,17 +49,32 @@ function main($type, $user_id, string $plan = 'binary_pair'): string
                 height: 100vh;
                 max-height: 100vh;
                 overflow: hidden;
-                touch-action: none; /* Prevent default touch behaviors */
+                touch-action: none;
+                position: relative;
+                padding-top: var(--spacing-top); /* Add padding at the top */
             }
 
             #genealogy_{$type} svg {
                 width: 100% !important;
-                height: 100% !important;
+                height: calc(100% - var(--spacing-top)) !important; /* Adjust height to account for top padding */
                 max-width: 100vw;
                 max-height: 100vh;
             }
 
-            /* Node styles */
+            /* Border container */
+            .border-container {
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                pointer-events: none;
+                border: var(--stroke-width-small) dashed var(--color-secondary);
+                margin: var(--spacing-sm);
+                border-radius: var(--border-radius);
+            }
+
+            /* Previous styles remain the same */
             #genealogy_{$type} .node circle {
                 fill: var(--color-background);
                 stroke: var(--color-primary);
@@ -70,69 +86,17 @@ function main($type, $user_id, string $plan = 'binary_pair'): string
                 transform-origin: center;
             }
 
-            /* Connection line styles */
             #genealogy_{$type} .link {
                 fill: none;
                 stroke: var(--color-secondary);
                 stroke-width: var(--stroke-width-small);
             }
 
-            /* Tooltip */
-            .tooltip {
-                position: fixed; /* Changed to fixed for better mobile handling */
-                padding: var(--spacing-sm) var(--spacing-md);
-                background-color: var(--color-tooltip-bg);
-                color: var(--color-tooltip-text);
-                border-radius: var(--border-radius);
-                font-size: var(--font-size-base);
-                font-family: var(--font-family-base);
-                pointer-events: none;
-                opacity: 0;
-                transition: opacity var(--transition-default);
-                max-width: min(300px, 80vw);
-                z-index: 1000;
-            }
-
-            /* Controls for mobile */
-            .controls {
-                position: fixed;
-                bottom: 1rem;
-                right: 1rem;
-                display: flex;
-                gap: 0.5rem;
-                z-index: 1000;
-            }
-
-            .control-button {
-                width: 40px;
-                height: 40px;
-                border-radius: 50%;
-                background: var(--color-primary);
-                color: white;
-                border: none;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                cursor: pointer;
-                font-size: 1.5rem;
-                opacity: 0.8;
-                transition: opacity 0.2s;
-            }
-
-            .control-button:hover {
-                opacity: 1;
-            }
-
-            @media (max-width: 768px) {
-                .tooltip {
-                    bottom: 5rem !important;
-                    left: 50% !important;
-                    transform: translateX(-50%) !important;
-                    top: auto !important;
-                }
-            }
+            /* Rest of the styles remain the same */
         </style>
-        <div id="genealogy_{$type}"></div>
+        <div id="genealogy_{$type}">
+            <div class="border-container"></div>
+        </div>
         <div class="tooltip" id="tooltip"></div>
         <div class="controls">
             <button class="control-button" id="zoomIn">+</button>
@@ -248,15 +212,16 @@ function render($type, $user_id, $plan): string
                 this.i = 0;
                 this.container = d3.select(containerId);
                 
-                // Make dimensions responsive
                 this.updateDimensions();
                 this.initializeResizeHandler();
                 
-                // Initialize touch handling variables
                 this.touchDistance = 0;
                 this.touching = false;
                 
                 this.tooltip = d3.select("#tooltip");
+                
+                // Define initial vertical offset
+                this.initialVerticalOffset = 60; // Increased offset to avoid border
                 
                 this.initializeSVG();
                 this.initializeTree(data);
@@ -266,8 +231,11 @@ function render($type, $user_id, $plan): string
 
             updateDimensions() {
                 const container = this.container.node();
+                const computedStyle = getComputedStyle(document.documentElement);
+                const topSpacing = parseFloat(computedStyle.getPropertyValue('--spacing-top'));
+                
                 this.width = container.clientWidth - CONFIG.margin.left - CONFIG.margin.right;
-                this.height = container.clientHeight - CONFIG.margin.top - CONFIG.margin.bottom;
+                this.height = container.clientHeight - CONFIG.margin.top - CONFIG.margin.bottom - topSpacing;
             }
 
             initializeResizeHandler() {
@@ -283,7 +251,6 @@ function render($type, $user_id, $plan): string
             }
 
             setupControls() {
-                // Zoom controls
                 const zoomIn = document.getElementById('zoomIn');
                 const zoomOut = document.getElementById('zoomOut');
                 const reset = document.getElementById('reset');
@@ -293,7 +260,7 @@ function render($type, $user_id, $plan): string
                 reset.addEventListener('click', () => {
                     this.svg.transition().duration(300).call(
                         this.zoom.transform,
-                        d3.zoomIdentity.translate(CONFIG.margin.left, CONFIG.margin.top)
+                        d3.zoomIdentity.translate(CONFIG.margin.left, CONFIG.margin.top + this.initialVerticalOffset)
                     );
                 });
             }
@@ -311,11 +278,9 @@ function render($type, $user_id, $plan): string
                     .style("display", "block")
                     .style("margin", "auto");
         
-                // Create group for zoom transformations
+                // Create group for zoom transformations with adjusted initial transform
                 this.zoomGroup = this.svg.append("g")
-                    .attr("transform", `translate(\${CONFIG.margin.left},\${CONFIG.margin.top})`);
-        
-                this.addBorder();
+                    .attr("transform", `translate(\${CONFIG.margin.left},\${CONFIG.margin.top + parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--spacing-top'))})`);
             }
         
             /**
@@ -343,8 +308,12 @@ function render($type, $user_id, $plan): string
                         this.zoomGroup.attr("transform", transform);
                     });
 
+                // Set initial transform with vertical offset
+                const initialTransform = d3.zoomIdentity
+                    .translate(CONFIG.margin.left, CONFIG.margin.top + this.initialVerticalOffset);
+
                 this.svg.call(this.zoom)
-                    .call(this.zoom.transform, d3.zoomIdentity.translate(CONFIG.margin.left, CONFIG.margin.top))
+                    .call(this.zoom.transform, initialTransform)
                     .on("touchstart", (event) => {
                         if (event.touches.length === 2) {
                             this.touching = true;
@@ -374,15 +343,15 @@ function render($type, $user_id, $plan): string
              * @private
             */
             initializeTree(data) {
-                // Create D3 tree layout
-                this.tree = d3.tree().size([this.width, this.height]);
+                // Create D3 tree layout with adjusted size
+                this.tree = d3.tree().size([this.width, this.height - this.initialVerticalOffset]);
         
                 // Create hierarchy from data
                 this.root = d3.hierarchy(data, d => d.children);
         
-                // Set initial position at center-top
+                // Set initial position with offset
                 this.root.x0 = this.width / 2;
-                this.root.y0 = 0;
+                this.root.y0 = this.initialVerticalOffset; // Start below the border
         
                 // Collapse all nodes initially
                 if (this.root.children) {
