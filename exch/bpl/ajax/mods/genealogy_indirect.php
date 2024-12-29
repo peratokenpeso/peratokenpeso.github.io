@@ -78,7 +78,7 @@ function buildTreeData(object $user, string $plan): array
 function buildUserDetails(object $user, string $plan): array
 {
 	$details = [
-		'id' => $user->id,
+		'username' => $user->username,
 		'account' => settings('entry')->{$user->account_type . '_package_name'},
 		'balance' => number_format($user->balance, 2)
 	];

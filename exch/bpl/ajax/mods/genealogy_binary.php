@@ -94,7 +94,7 @@ function buildUserDetails(object $user): array
 	}
 
 	$details = [
-		'id' => $user->id,
+		'username' => $user->username,
 		'account' => settings('entry')->{$user->account_type . '_package_name'},
 		'balance' => $balance,
 		'income_cycle' => number_format($user->income_cycle, 2),

@@ -46,15 +46,14 @@ function generateNetworkTree(int $id_user, string $plan): string
  * Builds the tree data structure for a given user
  * 
  * @param object $user User object
- * @param string $plan Plan type
  * @return array Tree data structure
  */
-function buildTreeData(object $user, string $plan): array
+function buildTreeData(object $user): array
 {
 	// Step 1: Build the parent node
 	$data = [
 		'username' => $user->username,
-		'details' => buildUserDetails($user, $plan)
+		'details' => buildUserDetails($user)
 	];
 
 	// Step 2: Get and process direct children
@@ -62,7 +61,7 @@ function buildTreeData(object $user, string $plan): array
 
 	if ($children) {
 		$data['children'] = array_map(
-			fn($child) => buildTreeData($child, $plan),
+			fn($child) => buildTreeData($child),
 			$children
 		);
 	}
@@ -90,7 +89,7 @@ function getDownlines(int $userId): array
 	);
 }
 
-function buildUserDetails(object $user, string $plan): array
+function buildUserDetails(object $user): array
 {
 	$balance = number_format($user->payout_transfer, 2);
 
@@ -99,7 +98,7 @@ function buildUserDetails(object $user, string $plan): array
 	}
 
 	$details = [
-		'id' => $user->id,
+		'username' => $user->username,
 		'account' => settings('entry')->{$user->account_type . '_package_name'},
 		'balance' => $balance,
 		'bonus_harvest' => number_format(harvest_user($user->id)->bonus_harvest_basic_last, 2)

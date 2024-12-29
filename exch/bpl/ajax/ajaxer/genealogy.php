@@ -26,7 +26,7 @@ function main($type, $user_id, string $plan = 'binary_pair'): string
                 --color-primary: steelblue;
                 --color-secondary: #999;
                 --color-background: #fff;
-                --color-tooltip-bg: rgba(0, 0, 0, 0.7);
+                --color-tooltip-bg: rgba(0, 0, 0, 0.9);
                 --color-tooltip-text: #fff;
                 
                 --font-size-base: clamp(0.75rem, 2vw, 1rem);
@@ -34,7 +34,7 @@ function main($type, $user_id, string $plan = 'binary_pair'): string
                 
                 --spacing-sm: max(0.3125rem, 1vw);
                 --spacing-md: max(0.625rem, 2vw);
-                --spacing-top: max(2rem, 4vw); /* New top spacing variable */
+                --spacing-top: max(2rem, 4vw);
                 
                 --border-radius: 0.3125rem;
                 --stroke-width-large: min(3px, 0.5vw);
@@ -51,14 +51,53 @@ function main($type, $user_id, string $plan = 'binary_pair'): string
                 overflow: hidden;
                 touch-action: none;
                 position: relative;
-                padding-top: var(--spacing-top); /* Add padding at the top */
+                padding-top: var(--spacing-top);
             }
 
             #genealogy_{$type} svg {
                 width: 100% !important;
-                height: calc(100% - var(--spacing-top)) !important; /* Adjust height to account for top padding */
+                height: calc(100% - var(--spacing-top)) !important;
                 max-width: 100vw;
                 max-height: 100vh;
+            }
+
+            /* Tooltip Styles */
+            .tooltip {
+                position: absolute;
+                padding: 10px;
+                background: var(--color-tooltip-bg);
+                color: var(--color-tooltip-text);
+                border-radius: 4px;
+                font-size: 14px;
+                pointer-events: none;
+                opacity: 0;
+                transition: opacity 0.2s ease-in-out;
+                z-index: 1000;
+                max-width: 300px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            }
+
+            /* Mobile Tooltip Positioning */
+            @media (max-width: 768px) {
+                .tooltip {
+                    position: fixed;
+                    left: 50% !important;
+                    bottom: 20px !important;
+                    transform: translateX(-50%);
+                    top: auto !important;
+                    width: 90%;
+                    max-width: none;
+                }
+            }
+
+            .tooltip div {
+                margin: 5px 0;
+                line-height: 1.4;
+            }
+
+            .tooltip strong {
+                color: #fff;
+                margin-right: 5px;
             }
 
             /* Border container */
@@ -553,13 +592,18 @@ function render($type, $user_id, $plan): string
             }
         
             /**
-             * Shows tooltip with node details on mouseover
-             * @param {d3.HierarchyNode} node - Node being hovered
+             * Shows tooltip with node details on mouseover/touch
+             * @param {d3.HierarchyNode} node - Node being interacted with
              * @private
-            */
+             */
             handleMouseOver(node) {
+                // Clear any existing timeouts
+                if (this.tooltipTimeout) {
+                    clearTimeout(this.tooltipTimeout);
+                }
+                
                 this.tooltip
-                    .style("opacity", 1)
+                    .style("opacity", "1")
                     .html(this.generateTooltipContent(node.data.details));
             }
         
@@ -569,22 +613,42 @@ function render($type, $user_id, $plan): string
              * Updates tooltip position on mouse movement
              * @param {MouseEvent} event - Mouse move event
              * @private
-            */
+             */
             handleMouseMove(event) {
                 const isMobile = window.innerWidth <= 768;
                 if (!isMobile) {
+                    const tooltipWidth = this.tooltip.node().offsetWidth;
+                    const tooltipHeight = this.tooltip.node().offsetHeight;
+                    
+                    // Calculate position to keep tooltip within viewport
+                    let left = event.pageX + 15;
+                    let top = event.pageY - tooltipHeight - 10;
+                    
+                    // Adjust if tooltip would go off right edge
+                    if (left + tooltipWidth > window.innerWidth) {
+                        left = event.pageX - tooltipWidth - 15;
+                    }
+                    
+                    // Adjust if tooltip would go off top edge
+                    if (top < 0) {
+                        top = event.pageY + 20;
+                    }
+                    
                     this.tooltip
-                        .style("left", `\${event.pageX + 10}px`)
-                        .style("top", `\${event.pageY - 20}px`);
+                        .style("left", `\${left}px`)
+                        .style("top", `\${top}px`);
                 }
             }
         
             /**
              * Hides tooltip when mouse leaves a node
              * @private
-            */
+             */
             handleMouseOut() {
-                this.tooltip.style("opacity", 0);
+                // Add a small delay before hiding tooltip
+                this.tooltipTimeout = setTimeout(() => {
+                    this.tooltip.style("opacity", "0");
+                }, 100);
             }
         }
     JS;
@@ -623,10 +687,10 @@ function tooltipContent($plan): string
              * @private
              */
             generateTooltipContent(details) {
-                const { id, account, balance, {$attrList} } = details;
+                const { username, account, balance, {$attrList} } = details;
             
                 return `
-                    <div><strong>ID:</strong> \${id}</div>
+                    <div><strong>User:</strong> \${username}</div>
                     <div><strong>Account:</strong> \${account}</div>
                     <div><strong>Balance:</strong> \${balance}</div>
                     <div><strong>Income:</strong> \${{$attributes[0]}}</div>
@@ -644,10 +708,10 @@ function tooltipContent($plan): string
              * @private
              */
             generateTooltipContent(details) {
-                const { id, account, balance, plan, {$attributes} } = details;
+                const { username, account, balance, plan, {$attributes} } = details;
             
                 return `
-                    <div><strong>ID:</strong> \${id}</div>
+                    <div><strong>User:</strong> \${username}</div>
                     <div><strong>Account:</strong> \${account}</div>
                     <div><strong>Balance:</strong> \${balance}</div>
                     <div><strong>\${plan}:</strong> \${{$attributes}}</div>

@@ -39,14 +39,13 @@ function generateNetworkTree(int $id_user, string $plan): string
 		throw new Exception('User not found');
 	}
 
-	return json_encode(buildTreeData($head, $plan));
+	return json_encode(buildTreeData($head));
 }
 
 /**
  * Builds the tree data structure for a given user
  * 
  * @param object $user User object
- * @param string $plan Plan type
  * @return array Tree data structure
  */
 function buildTreeData(object $user): array
@@ -99,7 +98,7 @@ function buildUserDetails(object $user): array
 	}
 
 	$details = [
-		'id' => $user->id,
+		'username' => $user->username,
 		'account' => settings('entry')->{$user->account_type . '_package_name'},
 		'balance' => $balance,
 		'bonus_harvest' => number_format(harvest_user($user->id)->bonus_harvest_associate_last, 2)
