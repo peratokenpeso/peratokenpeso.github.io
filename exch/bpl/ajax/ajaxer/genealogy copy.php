@@ -19,43 +19,34 @@ function main($type, $user_id, string $plan = 'binary_pair'): string
 {
     $render = render($type, $user_id, $plan);
 
+    // Use heredoc syntax to define the HTML, CSS, and JavaScript for the visualization
     return <<<HTML
         <link rel='stylesheet prefetch' href='https://fonts.googleapis.com/css?family=Roboto'>
         <style>
-            /* Responsive CSS with mobile-first approach */
+            /* Scoped CSS to prevent conflicts with external styles */
             :root {
                 --color-primary: steelblue;
                 --color-secondary: #999;
                 --color-background: #fff;
                 --color-tooltip-bg: rgba(0, 0, 0, 0.7);
                 --color-tooltip-text: #fff;
-                
-                --font-size-base: clamp(0.75rem, 2vw, 1rem);
+
+                --font-size-base: 0.75rem; /* 12px */
                 --font-family-base: system-ui, -apple-system, sans-serif;
-                
-                --spacing-sm: max(0.3125rem, 1vw);
-                --spacing-md: max(0.625rem, 2vw);
-                
-                --border-radius: 0.3125rem;
-                --stroke-width-large: min(3px, 0.5vw);
-                --stroke-width-small: min(2px, 0.3vw);
-                
+
+                --spacing-sm: 0.3125rem; /* 5px */
+                --spacing-md: 0.625rem; /* 10px */
+
+                --border-radius: 0.3125rem; /* 5px */
+                --stroke-width-large: 3px;
+                --stroke-width-small: 2px;
+
                 --transition-default: 200ms ease;
             }
 
             #genealogy_{$type} {
                 width: 100%;
-                height: 100vh;
-                max-height: 100vh;
-                overflow: hidden;
-                touch-action: none; /* Prevent default touch behaviors */
-            }
-
-            #genealogy_{$type} svg {
-                width: 100% !important;
-                height: 100% !important;
-                max-width: 100vw;
-                max-height: 100vh;
+                height: 100%;
             }
 
             /* Node styles */
@@ -67,7 +58,6 @@ function main($type, $user_id, string $plan = 'binary_pair'): string
 
             #genealogy_{$type} .node text {
                 font: var(--font-size-base) var(--font-family-base);
-                transform-origin: center;
             }
 
             /* Connection line styles */
@@ -79,7 +69,7 @@ function main($type, $user_id, string $plan = 'binary_pair'): string
 
             /* Tooltip */
             .tooltip {
-                position: fixed; /* Changed to fixed for better mobile handling */
+                position: absolute;
                 padding: var(--spacing-sm) var(--spacing-md);
                 background-color: var(--color-tooltip-bg);
                 color: var(--color-tooltip-text);
@@ -89,56 +79,10 @@ function main($type, $user_id, string $plan = 'binary_pair'): string
                 pointer-events: none;
                 opacity: 0;
                 transition: opacity var(--transition-default);
-                max-width: min(300px, 80vw);
-                z-index: 1000;
-            }
-
-            /* Controls for mobile */
-            .controls {
-                position: fixed;
-                bottom: 1rem;
-                right: 1rem;
-                display: flex;
-                gap: 0.5rem;
-                z-index: 1000;
-            }
-
-            .control-button {
-                width: 40px;
-                height: 40px;
-                border-radius: 50%;
-                background: var(--color-primary);
-                color: white;
-                border: none;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                cursor: pointer;
-                font-size: 1.5rem;
-                opacity: 0.8;
-                transition: opacity 0.2s;
-            }
-
-            .control-button:hover {
-                opacity: 1;
-            }
-
-            @media (max-width: 768px) {
-                .tooltip {
-                    bottom: 5rem !important;
-                    left: 50% !important;
-                    transform: translateX(-50%) !important;
-                    top: auto !important;
-                }
-            }
+            }   
         </style>
         <div id="genealogy_{$type}"></div>
         <div class="tooltip" id="tooltip"></div>
-        <div class="controls">
-            <button class="control-button" id="zoomIn">+</button>
-            <button class="control-button" id="zoomOut">-</button>
-            <button class="control-button" id="reset">↺</button>
-        </div>
         <script src="https://d3js.org/d3.v7.min.js"></script>
         <script>{$render}</script>
     HTML;
@@ -245,57 +189,19 @@ function render($type, $user_id, $plan): string
              * @param {TreeNode} data - Hierarchical data structure for the tree
             */
             constructor(containerId, data) {
-                this.i = 0;
+                this.i = 0;  // Counter for generating unique node IDs
                 this.container = d3.select(containerId);
-                
-                // Make dimensions responsive
-                this.updateDimensions();
-                this.initializeResizeHandler();
-                
-                // Initialize touch handling variables
-                this.touchDistance = 0;
-                this.touching = false;
-                
+        
+                // Calculate dimensions based on margins
+                this.width = 960 - CONFIG.margin.left - CONFIG.margin.right;
+                this.height = 500 - CONFIG.margin.top - CONFIG.margin.bottom;
+            
+                // Select tooltip container
                 this.tooltip = d3.select("#tooltip");
-                
+            
                 this.initializeSVG();
                 this.initializeTree(data);
                 this.setupZoom();
-                this.setupControls();
-            }
-
-            updateDimensions() {
-                const container = this.container.node();
-                this.width = container.clientWidth - CONFIG.margin.left - CONFIG.margin.right;
-                this.height = container.clientHeight - CONFIG.margin.top - CONFIG.margin.bottom;
-            }
-
-            initializeResizeHandler() {
-                window.addEventListener('resize', () => {
-                    this.updateDimensions();
-                    this.svg
-                        .attr("width", this.width + CONFIG.margin.left + CONFIG.margin.right)
-                        .attr("height", this.height + CONFIG.margin.top + CONFIG.margin.bottom);
-                    
-                    this.tree.size([this.width, this.height]);
-                    this.update(this.root);
-                });
-            }
-
-            setupControls() {
-                // Zoom controls
-                const zoomIn = document.getElementById('zoomIn');
-                const zoomOut = document.getElementById('zoomOut');
-                const reset = document.getElementById('reset');
-                
-                zoomIn.addEventListener('click', () => this.zoom.scaleBy(this.svg.transition().duration(300), 1.2));
-                zoomOut.addEventListener('click', () => this.zoom.scaleBy(this.svg.transition().duration(300), 0.8));
-                reset.addEventListener('click', () => {
-                    this.svg.transition().duration(300).call(
-                        this.zoom.transform,
-                        d3.zoomIdentity.translate(CONFIG.margin.left, CONFIG.margin.top)
-                    );
-                });
             }
         
             /**
@@ -337,35 +243,13 @@ function render($type, $user_id, $plan): string
              * @private
             */
             setupZoom() {
-                this.zoom = d3.zoom()
-                    .scaleExtent([0.3, 3])
+                const zoom = d3.zoom()
+                    .scaleExtent([0.5, 2])  // Limit zoom scale between 0.5x and 2x
                     .on("zoom", ({ transform }) => {
                         this.zoomGroup.attr("transform", transform);
                     });
-
-                this.svg.call(this.zoom)
-                    .call(this.zoom.transform, d3.zoomIdentity.translate(CONFIG.margin.left, CONFIG.margin.top))
-                    .on("touchstart", (event) => {
-                        if (event.touches.length === 2) {
-                            this.touching = true;
-                            const p1 = event.touches[0];
-                            const p2 = event.touches[1];
-                            this.touchDistance = Math.hypot(p2.pageX - p1.pageX, p2.pageY - p1.pageY);
-                        }
-                    })
-                    .on("touchmove", (event) => {
-                        if (this.touching && event.touches.length === 2) {
-                            const p1 = event.touches[0];
-                            const p2 = event.touches[1];
-                            const newDistance = Math.hypot(p2.pageX - p1.pageX, p2.pageY - p1.pageY);
-                            const delta = newDistance / this.touchDistance;
-                            this.touchDistance = newDistance;
-                            this.zoom.scaleBy(this.svg, delta);
-                        }
-                    })
-                    .on("touchend", () => {
-                        this.touching = false;
-                    });
+        
+                this.svg.call(zoom);
             }
         
             /**
@@ -602,12 +486,9 @@ function render($type, $user_id, $plan): string
              * @private
             */
             handleMouseMove(event) {
-                const isMobile = window.innerWidth <= 768;
-                if (!isMobile) {
-                    this.tooltip
-                        .style("left", `\${event.pageX + 10}px`)
-                        .style("top", `\${event.pageY - 20}px`);
-                }
+                this.tooltip
+                    .style("left", `\${event.pageX + 10}px`)
+                    .style("top", `\${event.pageY - 20}px`);
             }
         
             /**
