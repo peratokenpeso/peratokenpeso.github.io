@@ -22,10 +22,8 @@ use function BPL\Mods\Helpers\settings;
  */
 function main()
 {
-	// Fetch leadership passive settings
 	$slp = settings('leadership_passive');
 
-	// Process leadership passive bonus for each user
 	foreach (users() as $user) {
 		process_user_leadership_passive($user, $slp);
 	}
@@ -36,7 +34,7 @@ function main()
  * This function calculates and updates the leadership passive bonus for a given user.
  *
  * @param object $user The user object.
- * @param object $slp Leadership passive settings.
+ * @param object $slp  Leadership passive settings.
  *
  * @since version
  */
@@ -45,21 +43,18 @@ function process_user_leadership_passive($user, $slp)
 	$account_type = $user->account_type;
 	$count_directs = count(user_directs($user->user_id));
 
-	// Fetch leadership passive settings for the user's account type
 	$type_level = $slp->{$account_type . '_leadership_passive_level'};
 	$required_directs = $slp->{$account_type . '_leadership_passive_sponsored'};
 	$max_daily_income = $slp->{$account_type . '_leadership_passive_max_daily_income'};
 	$income_max = $slp->{$account_type . '_leadership_passive_maximum'};
 
-	// Fetch user's leadership passive details
 	$user_bonus_lp = $user->bonus_leadership_passive;
 	$ulp = user_leadership_passive($user->id);
 	$income_today = $ulp->income_today;
 
 	// Check if the user qualifies for leadership passive bonus
 	if ($type_level > 0 && $count_directs >= $required_directs) {
-		// Calculate total leadership passive bonus
-		$lp_total = calculate_total_leadership_passive_bonus($user);
+		$lp_total = bonus_total($user);
 		$lp_add = $lp_total - $ulp->bonus_leadership_passive_last;
 
 		if ($lp_add > 0) {
@@ -118,11 +113,11 @@ function non_zero($value)
  * This function calculates the total bonus based on the user's account type and level.
  *
  * @param object $user The user object.
- * @return float The total bonus.
+ * @return float|int The total bonus.
  *
  * @since version
  */
-function calculate_total_leadership_passive_bonus($user): float
+function bonus_total($user)
 {
 	$slp = settings('leadership_passive');
 	$account_type = $user->account_type;
@@ -135,7 +130,7 @@ function calculate_total_leadership_passive_bonus($user): float
 	if (count(user_directs($user->id)) >= $required_directs) {
 		// Calculate bonus for each level
 		for ($i = 1; $i <= $type_level; $i++) {
-			$total += calculate_leadership_passive_level_bonus($i, $user);
+			$total += leadership_passive_level($i, $user);
 		}
 	}
 
@@ -148,14 +143,14 @@ function calculate_total_leadership_passive_bonus($user): float
  *
  * @param int $level The level.
  * @param object $user The user object.
- * @return float The bonus.
+ * @return float|int The bonus.
  *
  * @since version
  */
-function calculate_leadership_passive_level_bonus($level, $user): float
+function leadership_passive_level($level, $user)
 {
 	$users = get_level_users($level, $user);
-	return calculate_level_bonus($level, $users);
+	return bonus_leadership_passive($level, $users);
 }
 
 /**
@@ -168,36 +163,13 @@ function calculate_leadership_passive_level_bonus($level, $user): float
  *
  * @since version
  */
-function get_level_users($level, $user): array
+function get_level_users($level, $user)
 {
 	$users = [$user];
-
-	// Iterate through each level to fetch indirect referrals
 	for ($i = 1; $i <= $level; $i++) {
-		$users = get_direct_referrals_for_users($users);
+		$users = level_directs($users);
 	}
-
 	return $users;
-}
-
-/**
- * Retrieve direct referrals for a given list of users.
- * This function takes an array of users and returns their direct referrals.
- *
- * @param array $users An array of user objects for whom direct referrals are to be fetched.
- * @return array An array of direct referrals for the provided users.
- *
- * @since version
- */
-function get_direct_referrals_for_users(array $users): array
-{
-	$directs = [];
-
-	foreach ($users as $user) {
-		$directs = array_merge($directs, user_directs($user->id));
-	}
-
-	return $directs;
 }
 
 /**
@@ -206,11 +178,11 @@ function get_direct_referrals_for_users(array $users): array
  *
  * @param int $level The level.
  * @param array $users The users.
- * @return float The bonus.
+ * @return float|int The bonus.
  *
  * @since version
  */
-function calculate_level_bonus($level, $users): float
+function bonus_leadership_passive($level, $users)
 {
 	$bonus = 0;
 
@@ -219,14 +191,10 @@ function calculate_level_bonus($level, $users): float
 			$account_type = $user->account_type;
 			$slp = settings('leadership_passive');
 
-			// Fetch share and share cut for the level
 			$share = $slp->{$account_type . '_leadership_passive_share_' . $level} / 100;
 			$share_cut = $slp->{$account_type . '_leadership_passive_share_cut_' . $level} / 100;
 
-			// Calculate passive income
 			$passive = $user->top_up_interest + $user->fast_track_interest + $user->fixed_daily_interest + $user->compound_daily_interest;
-
-			// Calculate bonus for the user
 			$bonus += $passive * $share * $share_cut;
 		}
 	}
@@ -244,7 +212,7 @@ function calculate_level_bonus($level, $users): float
  *
  * @since version
  */
-function members_level($level, $user): int
+function members_level($level, $user)
 {
 	$users = get_level_users($level, $user);
 	return count($users);
@@ -259,7 +227,7 @@ function members_level($level, $user): int
  *
  * @since version
  */
-function members_total($user): int
+function members_total($user)
 {
 	$total = 0;
 	$slp = settings('leadership_passive');
@@ -306,13 +274,13 @@ function view($user_id): string
             <tbody>';
 
 	for ($i = 1; $i <= $level; $i++) {
-		$str .= generate_view_row($i, $user);
+		$str .= view_row($i, $user);
 	}
 
 	$str .= '<tr>
                 <td><div style="text-align: center"><strong>Total' . $status . '</strong></div></td>
                 <td><div style="text-align: center">' . members_total($user) . '</div></td>
-                <td><div style="text-align: center">' . number_format(calculate_total_leadership_passive_bonus($user), 8) . '</div></td>
+                <td><div style="text-align: center">' . number_format(bonus_total($user), 8) . '</div></td>
                 <td><div style="text-align: center">N/A</div></td>
             </tr>
             </tbody>
@@ -331,10 +299,10 @@ function view($user_id): string
  *
  * @since version
  */
-function generate_view_row($level, $user): string
+function view_row($level, $user): string
 {
 	$members = members_level($level, $user);
-	$bonus = calculate_leadership_passive_level_bonus($level, $user);
+	$bonus = leadership_passive_level($level, $user);
 
 	$slp = settings('leadership_passive');
 	$share = $slp->{$user->account_type . '_leadership_passive_share_' . $level};
@@ -353,6 +321,34 @@ function generate_view_row($level, $user): string
             </tr>';
 
 	return $str;
+}
+
+/**
+ * Retrieve direct referrals for a given list of users.
+ * This function takes an array of users and returns their direct referrals.
+ *
+ * @param array $lvl_1 An array of user objects for whom direct referrals are to be fetched.
+ * @return array An array of direct referrals for the provided users.
+ *
+ * @since version
+ */
+function level_directs(array $lvl_1 = []): array
+{
+	$lvl_directs = [];
+
+	if (!empty($lvl_1)) {
+		foreach ($lvl_1 as $s1) {
+			$directs = user_directs($s1->id);
+
+			if (!empty($directs)) {
+				foreach ($directs as $direct) {
+					$lvl_directs[] = $direct;
+				}
+			}
+		}
+	}
+
+	return $lvl_directs;
 }
 
 /**

@@ -8,188 +8,256 @@ require_once 'bpl/mods/helpers.php';
 
 use function BPL\Mods\Database\Query\update;
 use function BPL\Mods\Database\Query\insert;
-
 use function BPL\Mods\Commission_Deduct\Filter\main as cd_filter;
-
 use function BPL\Mods\Url_SEF\sef;
 use function BPL\Mods\Url_SEF\qs;
-
 use function BPL\Mods\Helpers\db;
-use function BPL\Mods\Helpers\user;
 use function BPL\Mods\Helpers\settings;
 
 /**
- *
+ * Main function to process echelon bonuses for all users.
+ * This function iterates through all users and processes their echelon bonuses.
  *
  * @since version
  */
 function main()
 {
+	// Fetch echelon settings
 	$settings_echelon = settings('echelon');
 
+	// Fetch all users
 	$users = users();
 
+	// Process echelon bonus for each user
 	foreach ($users as $user) {
-		$account_type = $user->account_type;
-		$user_id = $user->id;
-		$user_bonus_echelon = $user->bonus_echelon;
+		process_user_echelon_bonus($user, $settings_echelon);
+	}
+}
 
-		//		$sponsored = user_direct($user_id);
+/**
+ * Process echelon bonus for a single user.
+ * This function calculates and updates the echelon bonus for a given user.
+ *
+ * @param object $user The user object.
+ * @param object $settings_echelon Echelon settings.
+ *
+ * @since version
+ */
+function process_user_echelon_bonus($user, $settings_echelon)
+{
+	$account_type = $user->account_type;
+	$user_id = $user->id;
+	$user_bonus_echelon = $user->bonus_echelon;
 
-		$level = $settings_echelon->{$account_type . '_echelon_level'};
-		$income_limit_cycle = $settings_echelon->{$account_type . '_echelon_max_daily_income'};
-		$income_max = $settings_echelon->{$account_type . '_echelon_maximum'};
+	// Fetch echelon level, income limit, and maximum income from settings
+	$level = $settings_echelon->{$account_type . '_echelon_level'};
+	$income_limit_cycle = $settings_echelon->{$account_type . '_echelon_max_daily_income'};
+	$income_max = $settings_echelon->{$account_type . '_echelon_maximum'};
 
-		$user_echelon = user_echelon($user_id);
+	// Fetch user's echelon details
+	$user_echelon = user_echelon($user_id);
+	$income_today = $user_echelon->income_today;
 
-		$income_today = $user_echelon->income_today;
+	// Check if the user qualifies for echelon bonus
+	if ($level && ($income_limit_cycle > 0 && $income_today < $income_limit_cycle || !$income_limit_cycle) && ($income_max > 0 && $user_bonus_echelon < $income_max || !$income_max)) {
+		// Calculate total echelon bonus
+		$echelon_total = calculate_total_echelon_bonus($user_id, $level);
+		$echelon_add = $echelon_total - $user_echelon->bonus_echelon_last;
 
-		if (
-			$level
-			//	        && empty(user_cd($user_id))
-			&& (($income_limit_cycle > 0 && $income_today < $income_limit_cycle) || !$income_limit_cycle)
-			&& ($income_max > 0 && $user_bonus_echelon < $income_max || !$income_max)
-		) {
-			// whole value
-			$echelon_total = total($user_id)['bonus'];
-			$echelon_add = $echelon_total - $user_echelon->bonus_echelon_last;
-
-			if ($echelon_add > 0) {
-				if ($income_limit_cycle > 0 && ($income_today + $echelon_add) >= $income_limit_cycle) {
-					$echelon_add = non_zero($income_limit_cycle - $income_today);
-				}
-
-				if ($income_max > 0 && ($user_bonus_echelon + $echelon_add) >= $income_max) {
-					$echelon_add = non_zero($income_max - $user_bonus_echelon);
-				}
-
-				// difference between last whole value and whole value now
-//				$bonus_ir_new = upline_support(cd_filter($user_id, $ir_add), $user_id);
-
-				/*if (*/
-				update_bonus_echelon($echelon_total, $echelon_add, $user);/*)*/
-				//				{
-//					update_user($bonus_ir_new, $ir_add, $user_id);
-//					log_activity($ir_add, $user_id, $sponsor_id, $username);
-//				}
+		if ($echelon_add > 0) {
+			// Apply daily and maximum income limits
+			if ($income_limit_cycle > 0 && ($income_today + $echelon_add) >= $income_limit_cycle) {
+				$echelon_add = non_zero($income_limit_cycle - $income_today);
 			}
+
+			if ($income_max > 0 && ($user_bonus_echelon + $echelon_add) >= $income_max) {
+				$echelon_add = non_zero($income_max - $user_bonus_echelon);
+			}
+
+			// Update echelon and user records
+			update_bonus_echelon($echelon_total, $echelon_add, $user);
 		}
 	}
 }
 
 /**
- * @param $insert_id
+ * Calculate the total echelon bonus for a user.
+ * This function calculates the total bonus based on the user's indirect referrals across all levels.
  *
- * @param $code_type
- * @param $username
- * @param $sponsor
- * @param $date
- * @param $prov
+ * @param int $user_id The user ID.
+ * @param int $level The maximum echelon level.
+ * @return float The total echelon bonus.
  *
- * @return void
  * @since version
  */
-function insert_echelon($insert_id, $code_type, $username, $sponsor, $date, $prov)
+function calculate_total_echelon_bonus($user_id, $level): float
 {
-	if (empty(user_echelon($insert_id))) {
-		insert(
-			'network_echelon',
-			['user_id'],
-			[db()->quote($insert_id)]
-		);
+	$total_bonus = 0;
 
-		logs_echelon($insert_id, $code_type, $username, $sponsor, $date, $prov);
+	// Iterate through each level
+	for ($current_level = 1; $current_level <= $level; $current_level++) {
+		// Fetch users for the current level
+		$level_users = get_level_users($user_id, $current_level);
+
+		// Calculate bonus for the current level
+		$total_bonus += calculate_level_bonus($level_users, $current_level);
 	}
+
+	return $total_bonus;
 }
 
 /**
- * @param $insert_id
- * @param $code_type
- * @param $username
- * @param $sponsor
- * @param $date
- * @param $prov
+ * Fetch users for a specific level.
+ * This function retrieves users for a given level based on the user's direct and indirect referrals.
+ *
+ * @param int $user_id The user ID.
+ * @param int $level The level.
+ * @return array The list of users for the level.
  *
  * @since version
  */
-function logs_echelon($insert_id, $code_type, $username, $sponsor, $date, $prov)
+function get_level_users($user_id, $level): array
+{
+	$users = [$user_id];
+
+	// Iterate through each level to fetch indirect referrals
+	for ($i = 1; $i < $level; $i++) {
+		$new_users = [];
+
+		foreach ($users as $user) {
+			$directs = user_direct($user);
+			$new_users = array_merge($new_users, $directs);
+		}
+
+		$users = $new_users;
+	}
+
+	return $users;
+}
+
+/**
+ * Calculate the echelon bonus for a specific level and users.
+ * This function calculates the bonus based on the user's withdrawals and share percentage.
+ *
+ * @param array $users The list of users for the level.
+ * @param int $level The level.
+ * @return float The echelon bonus.
+ *
+ * @since version
+ */
+function calculate_level_bonus($users, $level): float
+{
+	$bonus = 0;
+
+	$settings_echelon = settings('echelon');
+
+	foreach ($users as $user) {
+		$account_type = $user->account_type;
+
+		// Fetch share and share cut for the level
+		$member_share = $settings_echelon->{$account_type . '_echelon_share_' . $level};
+		$member_share_cut = $settings_echelon->{$account_type . '_echelon_share_cut_' . $level};
+
+		// Calculate the bonus for the user
+		$member_cut = $member_share * $member_share_cut / 100 / 100;
+		$cut = is_cd($account_type) ? 0 : $member_cut;
+
+		// Fetch user's confirmed e-fund conversions
+		$withdrawals = user_efund_convert_confirmed($user->id);
+		$total_withdrawals = array_sum(array_column($withdrawals, 'amount'));
+
+		$bonus += $cut * $total_withdrawals;
+	}
+
+	return $bonus;
+}
+
+/**
+ * Check if the account type includes 'cd'.
+ * This function checks if the account type includes the 'cd' suffix.
+ *
+ * @param string $account_type The account type.
+ * @return bool True if the account type includes 'cd', otherwise false.
+ *
+ * @since version
+ */
+function is_cd($account_type): bool
+{
+	$code_type_arr = explode('_', $account_type);
+	return in_array('cd', $code_type_arr, true);
+}
+
+/**
+ * Fetch confirmed e-fund conversions for a user.
+ * This function retrieves confirmed e-fund conversions for a given user ID.
+ *
+ * @param int $user_id The user ID.
+ * @return array The list of confirmed e-fund conversions.
+ *
+ * @since version
+ */
+function user_efund_convert_confirmed($user_id): array
 {
 	$db = db();
 
-	$settings_plans = settings('plans');
-
-	$sponsor_id = '';
-
-	$user_sponsor = user_username($sponsor);
-
-	if (!empty($user_sponsor)) {
-		$sponsor_id = $user_sponsor[0]->id;
-	}
-
-	$activity = '<b>' . ucwords($settings_plans->echelon_name) . ' Entry: </b> <a href="' .
-		sef(44) . qs() . 'uid=' . $insert_id . '">' . $username . '</a> has entered into ' .
-		ucwords($settings_plans->echelon_name) . ' upon ' . ucfirst(settings('entry')->{$code_type .
-			'_package_name'}) . source($prov) . '.';
-
-	insert(
-		'network_activity',
-		[
-			'user_id',
-			'sponsor_id',
-			'activity',
-			'activity_date'
-		],
-		[
-			$db->quote($insert_id),
-			$db->quote($sponsor_id),
-			$db->quote($activity),
-			$db->quote($date)
-		]
-	);
+	return $db->setQuery(
+		'SELECT * ' .
+		'FROM network_users, ' .
+		'network_efund_convert ' .
+		'WHERE id = user_id ' .
+		'AND date_approved <> 0 ' .
+		'AND user_id = ' . $db->quote($user_id) .
+		' ORDER BY convert_id DESC'
+	)->loadObjectList();
 }
 
 /**
- * @param $prov
+ * Fetch direct referrals for a given sponsor.
+ * This function retrieves all direct referrals for a given sponsor ID.
  *
- * @return string
- *
- * @since version
- */
-function source($prov): string
-{
-	$source = ' Sign Up';
-
-	if ($prov === 'activate') {
-		$source = ' Activation';
-	} elseif ($prov === 'upgrade') {
-		$source = ' Upgrade';
-	}
-
-	return $source;
-}
-
-/**
- * @param $username
- *
- * @return array|mixed
+ * @param int $sponsor_id The sponsor ID.
+ * @return array The list of direct referrals.
  *
  * @since version
  */
-function user_username($username)
+function user_direct($sponsor_id): array
 {
 	$db = db();
 
 	return $db->setQuery(
 		'SELECT * ' .
 		'FROM network_users ' .
-		'WHERE username = ' . $db->quote($username)
+		'WHERE account_type <> ' . $db->quote('starter') .
+		'AND sponsor_id = ' . $db->quote($sponsor_id)
 	)->loadObjectList();
 }
 
 /**
- * @param $value
+ * Fetch echelon details for a user.
+ * This function retrieves echelon details for a given user ID.
  *
- * @return int|mixed
+ * @param int $user_id The user ID.
+ * @return mixed|null The echelon details.
+ *
+ * @since version
+ */
+function user_echelon($user_id)
+{
+	$db = db();
+
+	return $db->setQuery(
+		'SELECT * ' .
+		'FROM network_echelon ' .
+		'WHERE user_id = ' . $db->quote($user_id)
+	)->loadObject();
+}
+
+/**
+ * Ensure the value is non-negative.
+ * This function returns the value if it is non-negative, otherwise returns 0.
+ *
+ * @param mixed $value The value to check.
+ * @return int|mixed The non-negative value.
  *
  * @since version
  */
@@ -199,38 +267,40 @@ function non_zero($value)
 }
 
 /**
- * @param $total
- * @param $add
- * @param $user
+ * Update echelon bonus for a user.
+ * This function updates the echelon bonus and related fields for a given user.
  *
- * @return void
+ * @param float $total The total bonus.
+ * @param float $add The bonus to add.
+ * @param object $user The user object.
  *
  * @since version
  */
 function update_bonus_echelon($total, $add, $user)
 {
 	$db = db();
-
 	$user_id = $user->id;
 	$username = $user->username;
 	$sponsor_id = $user->sponsor_id;
 
+	// Fetch entry and freeze settings
 	$se = settings('entry');
 	$sf = settings('freeze');
 
 	$account_type = $user->account_type;
-
 	$income_cycle_global = $user->income_cycle_global;
 
+	// Calculate freeze limit
 	$entry = $se->{$account_type . '_entry'};
 	$factor = $sf->{$account_type . '_percentage'} / 100;
-
 	$freeze_limit = $entry * $factor;
 
 	$status = $user->status_global;
 
+	// Check if income cycle exceeds freeze limit
 	if ($income_cycle_global >= $freeze_limit) {
 		if ($status === 'active') {
+			// Update user status and flushout income
 			update(
 				'network_users',
 				[
@@ -241,6 +311,7 @@ function update_bonus_echelon($total, $add, $user)
 			);
 		}
 
+		// Update echelon record
 		update_network_echelon($total, 0, $user_id);
 	} else {
 		$diff = $freeze_limit - $income_cycle_global;
@@ -249,12 +320,13 @@ function update_bonus_echelon($total, $add, $user)
 			$flushout_global = $add - $diff;
 
 			if ($user->status_global === 'active') {
+				// Update user bonus and status
 				$field_user = ['bonus_echelon = bonus_echelon + ' . $diff];
-
 				$field_user[] = 'status_global = ' . $db->quote('inactive');
 				$field_user[] = 'income_cycle_global = income_cycle_global + ' . cd_filter($user_id, $diff);
 				$field_user[] = 'income_flushout = income_flushout + ' . $flushout_global;
 
+				// Update balance or payout transfer based on withdrawal mode
 				if (settings('ancillaries')->withdrawal_mode === 'standard') {
 					$field_user[] = 'balance = balance + ' . cd_filter($user_id, $diff);
 				} else {
@@ -268,13 +340,15 @@ function update_bonus_echelon($total, $add, $user)
 				);
 			}
 
+			// Update echelon record and log activity
 			update_network_echelon($total, $diff, $user_id);
 			log_activity($diff, $user_id, $sponsor_id, $username);
 		} else {
+			// Update user bonus
 			$field_user = ['bonus_echelon = bonus_echelon + ' . $add];
-
 			$field_user[] = 'income_cycle_global = income_cycle_global + ' . cd_filter($user_id, $add);
 
+			// Update balance or payout transfer based on withdrawal mode
 			if (settings('ancillaries')->withdrawal_mode === 'standard') {
 				$field_user[] = 'balance = balance + ' . cd_filter($user_id, $add);
 			} else {
@@ -287,23 +361,23 @@ function update_bonus_echelon($total, $add, $user)
 				['id = ' . $db->quote($user_id)]
 			);
 
+			// Update echelon record and log activity
 			update_network_echelon($total, $add, $user_id);
 			log_activity($add, $user_id, $sponsor_id, $username);
 		}
 	}
 }
 
-//function fixed_daily($user_id)
-//{
-//	$db = db();
-//
-//	return $db->setQuery(
-//		'SELECT * ' .
-//		'FROM network_fixed_daily ' .
-//		'WHERE user_id = ' . $db->quote($user_id)
-//	)->loadObject();
-//}
-
+/**
+ * Update echelon record for a user.
+ * This function updates the echelon bonus and related fields in the network_echelon table.
+ *
+ * @param float $total The total bonus.
+ * @param float $add The bonus to add.
+ * @param int $user_id The user ID.
+ *
+ * @since version
+ */
 function update_network_echelon($total, $add, $user_id)
 {
 	$db = db();
@@ -320,37 +394,14 @@ function update_network_echelon($total, $add, $user_id)
 	);
 }
 
-// /**
-//  * @param $bonus_ir_new
-//  * @param $ir_add
-//  * @param $user_id
-//  *
-//  *
-//  * @since version
-//  */
-// function update_user($bonus_ir_new, $ir_add, $user_id)
-// {
-// 	$field_user = ['bonus_indirect_referral = bonus_indirect_referral + ' . $ir_add];
-
-// 	if (settings('ancillaries')->withdrawal_mode === 'standard') {
-// 		$field_user[] = 'balance = balance + ' . $bonus_ir_new;
-// 	} else {
-// 		$field_user[] = 'payout_transfer = payout_transfer + ' . $bonus_ir_new;
-// 	}
-
-// 	update(
-// 		'network_users',
-// 		$field_user,
-// 		['id = ' . db()->quote($user_id)]
-// 	);
-// }
-
 /**
- * @param $echelon
- * @param $user_id
- * @param $sponsor_id
- * @param $username
+ * Log echelon bonus activity.
+ * This function logs the activity when a user earns an echelon bonus.
  *
+ * @param float $echelon The bonus amount.
+ * @param int $user_id The user ID.
+ * @param int $sponsor_id The sponsor ID.
+ * @param string $username The username.
  *
  * @since version
  */
@@ -379,12 +430,14 @@ function log_activity($echelon, $user_id, $sponsor_id, $username)
 }
 
 /**
+ * Fetch all users.
+ * This function retrieves all users except those with the 'starter' account type.
  *
- * @return array|mixed
+ * @return array The list of users.
  *
  * @since version
  */
-function users()
+function users(): array
 {
 	$db = db();
 
@@ -393,411 +446,4 @@ function users()
 		'FROM network_users ' .
 		'WHERE account_type <> ' . $db->quote('starter')
 	)->loadObjectList();
-}
-
-/**
- * @param $sponsor_id
- *
- * @return array|mixed
- *
- * @since version
- */
-function user_direct($sponsor_id)
-{
-	$db = db();
-
-	return $db->setQuery(
-		'SELECT * ' .
-		'FROM network_users ' .
-		'WHERE account_type <> ' . $db->quote('starter') .
-		'AND sponsor_id = ' . $db->quote($sponsor_id)
-	)->loadObjectList();
-}
-
-/**
- * @param $user_id
- *
- * @return mixed|null
- *
- * @since version
- */
-function user_cd($user_id)
-{
-	$db = db();
-
-	return $db->setQuery(
-		'SELECT * ' .
-		'FROM network_commission_deduct ' .
-		'WHERE id = ' . $db->quote($user_id)
-	)->loadObject();
-}
-
-/**
- * @param $user_id
- *
- *
- * @return mixed|null
- * @since version
- */
-function user_echelon($user_id)
-{
-	$db = db();
-
-	return $db->setQuery(
-		'SELECT * ' .
-		'FROM network_echelon ' .
-		'WHERE user_id = ' . $db->quote($user_id)
-	)->loadObject();
-}
-
-/**
- * @param   array  $lvl_1
- *
- * @return array[]
- *
- * @since version
- */
-function level(array $lvl_1 = []): array
-{
-	$lvl_2 = [];
-
-	$withdrawals = [];
-
-	if (!empty($lvl_1)) {
-		foreach ($lvl_1 as $sponsor1) {
-			$directs = user_direct($sponsor1);
-
-			if (!empty($directs)) {
-				foreach ($directs as $direct) {
-					$amount_total = 0;
-
-					// $user_withdrawals = user_repeat_head($head_id, $direct->id);
-					$user_withdrawals = user_efund_convert_confirmed($direct->id);
-
-					foreach ($user_withdrawals as $withdrawal) {
-						$amount_total += $withdrawal->amount; // points per user
-					}
-
-					//					$user_cd = user_cd($sponsor2->id);
-
-					$lvl_2[] = $direct->id; // array
-//						$points += $item_points; // double
-					$withdrawals[$direct->account_type/* . (!empty(user_cd($sponsor2->id)) ? '_cd' : '')*/] = $amount_total;
-
-					//					$lvl_2[$sponsor2->id] = $item_points;
-				}
-			}
-		}
-	}
-
-	return [$lvl_2, $withdrawals];
-}
-
-// /**
-//  * @param $user_id
-//  * @param $head_id
-//  *
-//  * @return array|mixed
-//  *
-//  * @since version
-//  */
-// function user_repeat_head($head_id, $user_id)
-// {
-// 	$db = db();
-
-// 	$head_user = user($head_id);
-
-// 	$date_activated_head = $head_user->date_activated;
-
-// 	$head_repeat = user_repeat($head_id);
-
-// 	if (!empty($head_repeat)) {
-// 		foreach ($head_repeat as $repeat) {
-// 			if ($repeat->item_id == 24) {
-// 				$date_activated_head = $repeat->date;
-// 			}
-
-// 			break;
-// 		}
-// 	}
-
-// 	return $db->setQuery(
-// 		'SELECT * ' .
-// 		'FROM network_repeat ' .
-// 		'WHERE user_id = ' . $db->quote($user_id) .
-// 		' AND date >= ' . $date_activated_head
-// 	)->loadObjectlist();
-// }
-
-function user_efund_convert_confirmed($user_id)
-{
-	$db = db();
-
-	return $db->setQuery(
-		'SELECT * ' .
-		'FROM network_users, ' .
-		'network_efund_convert ' .
-		'WHERE id = user_id ' .
-		'AND date_approved <> 0 ' .
-		'AND user_id = ' . $db->quote($user_id) .
-		' ORDER BY convert_id DESC'
-	)->loadObjectList();
-}
-
-// function user_repeat($user_id)
-// {
-// 	$db = db();
-
-// 	return $db->setQuery(
-// 		'SELECT * ' .
-// 		'FROM network_repeat ' .
-// 		'WHERE user_id = ' . $db->quote($user_id)
-// 	)->loadObjectlist();
-// }
-
-function is_cd($account_type): bool
-{
-	$code_type_arr = explode('_', $account_type);
-
-	return in_array('cd', $code_type_arr, true);
-}
-
-/**
- * @param          $level
- * @param          $user_id
- *
- * @return array
- *
- * @since version
- */
-function nested($level, $user_id): array
-{
-	$result[] = level([$user_id]);
-
-	for ($i_i = 2; $i_i <= $level; $i_i++) {
-		$last = array_reverse($result)[0];
-
-		$result[] = level($last[0]);
-	}
-
-	return $result;
-}
-
-/**
- * @param $indirects
- * @param $level
- *
- * @return float|int
- *
- * @since version
- */
-function get($indirects, $level)
-{
-	$echelon = 0;
-
-	$settings_echelon = settings('echelon');
-
-	if (count($indirects) > 0) {
-		foreach ($indirects as $account_type => $withdrawals) {
-			$member_share = $settings_echelon->{$account_type . '_echelon_share_' . $level};
-			$member_share_cut = $settings_echelon->{$account_type . '_echelon_share_cut_' . $level};
-
-			$member_cut = $member_share * $member_share_cut / 100 / 100;
-
-			$cut = is_cd($account_type) ? 0 : $member_cut;
-
-			$echelon += $cut * $withdrawals;
-		}
-	}
-
-	return $echelon;
-}
-
-/**
- * @param $head_account_type
- * @param $indirects
- * @param $ctr
- *
- * @return array
- *
- * @since version
- */
-function bonus($head_account_type, $indirects, $ctr): array
-{
-	return [
-		'member' => count($indirects[0]),
-		'bonus' => get($indirects[1], $ctr)
-	];
-}
-
-/**
- * @param $user_id
- *
- * @return array
- *
- * @since version
- */
-function total($user_id): array
-{
-	$settings_echelon = settings('echelon');
-
-	$head_account_type = user($user_id)->account_type;
-
-	$type_level = $settings_echelon->{$head_account_type . '_echelon_level'};
-
-	$member = 0;
-	$bonus = 0;
-
-	$ctr = 1;
-
-	$results = nested($type_level, $user_id);
-
-	foreach ($results as $result) {
-		$member += count($result[0]);
-		$bonus += get($result[1], $ctr);
-
-		$ctr++;
-	}
-
-	return [
-		'member' => $member,
-		'bonus' => $bonus
-	];
-}
-
-/**
- * @param $user_id
- *
- * @return string
- *
- * @since version
- */
-function view($user_id): string
-{
-	$settings_ancillaries = settings('ancillaries');
-	$settings_plans = settings('plans');
-	$settings_entry = settings('entry');
-	$settings_echelon = settings('echelon');
-
-	$user = user($user_id);
-
-	$head_account_type = $user->account_type;
-
-	$currency = $settings_ancillaries->currency;
-
-	$str = '';
-
-	$type_level = $settings_echelon->{$head_account_type . '_echelon_level'};
-
-	if ($type_level && $head_account_type !== 'starter') {
-		$str .= '<h3>' . $settings_plans->echelon_name . '</h3>';
-		$str .= '<table class="category table table-striped table-bordered table-hover">';
-		$str .= '<thead>';
-		$str .= '<tr>';
-
-		$str .= '<th>';
-		$str .= '<div style="text-align: center"><h4>Level</h4></div>';
-		$str .= '</th>';
-
-		$str .= '<th>';
-		$str .= '<div style="text-align: center"><h4>Member</h4></div>';
-		$str .= '</th>';
-
-		$str .= '<th>';
-		$str .= '<div style="text-align: center"><h4>Profit (' . $currency . ')</h4></div>';
-		$str .= '</th>';
-
-		$str .= '<th>';
-		$str .= '<div style="text-align: center"><h4>Allocation (%)</h4></div>';
-		$str .= '</th>';
-
-		$str .= '</tr>';
-		$str .= '</thead>';
-		$str .= '<tbody>';
-
-		$results = nested($type_level, $user_id);
-
-		$ctr = 1;
-
-		foreach ($results as $result) {
-			$member = bonus($head_account_type, $result, $ctr)['member'];
-			$bonus = bonus($head_account_type, $result, $ctr)['bonus'];
-
-			$str .= '<tr>';
-
-			$str .= '<td>';
-			$str .= '<div style="text-align: center" ' . ($ctr === 1 ? 'style="color: red"' : '') . '>
-                            <strong>' . ($ctr !== 1 ? $ctr : '') .
-				($ctr === 1 ? ' (Direct)' : '') . '</strong>
-                        </div>';
-			$str .= '</td>';
-
-			$str .= '<td>';
-			$str .= '<div style="text-align: center" ' .
-				($ctr === 1 ? 'style="color: red"' : '') . '>' .
-				($ctr === 1 ? ('(' . $member . ')') : $member) . '</div>';
-			$str .= '</td>';
-
-			$str .= '<td>';
-			$str .= '<div style="text-align: center" ' .
-				($ctr === 1 ? 'style="color: red"' : '') . '>' .
-				($ctr === 1 ? ('(' . number_format($bonus, 8) . ')') :
-					number_format($bonus, 8)) . '</div>';
-			$str .= '</td>';
-
-			//			$share     = $sul->{$head_account_type . '_echelon_share_' . $ctr};
-//			$share_cut = $sul->{$head_account_type . '_echelon_share_cut_' . $ctr};
-//
-//			$cut = $share * $share_cut / 100;
-
-			$entry = $settings_entry->{$head_account_type . '_entry'};
-
-			$percent = $entry > 0 ? ($bonus / $entry) * 100 : 0;
-
-			$str .= '<td>';
-			$str .= '<div style="text-align: center" ' .
-				($ctr === 1 ? 'style="color: red"' : '') . '>' .
-				($ctr === 1 ? ('(' . number_format($percent, 2) . ')') :
-					number_format($percent, 2)) . '</div>';
-			$str .= '</td>';
-
-			$str .= '</tr>';
-
-			$ctr++;
-		}
-
-		//		$user_echelon = user_echelon($user_id);
-
-		//		$flushout_global = $user_echelon->flushout_global;
-//		$flushout_local  = $user_echelon->flushout_local;
-
-		$str .= '<tr>';
-		$str .= '<td>';
-		$str .= '<div style="text-align: center"><strong>Total</strong></div>';
-		$str .= '</td>';
-		$str .= '<td>';
-		$str .= '<div style="text-align: center">' . (total($user_id)['member']) . '</div>';
-		$str .= '</td>';
-		$str .= '<td>';
-		$str .= '<div style="text-align: center">' .
-			number_format(/*total($user_id)['bonus']*/
-				($user->bonus_echelon/* - $flushout_global - $flushout_local*/),
-				8
-			) . '</div>';
-		$str .= '</td>';
-		$str .= '<td>';
-		$str .= '<div style="text-align: center">N/A</div>';
-		$str .= '</td>';
-		$str .= '</tr>';
-		$str .= '</tbody>';
-		$str .= '</table>';
-	}
-	//	else
-//	{
-//		$str .= '<h3 style="alignment: center">Sponsor At Least ' .
-//			$sul->{$head_account_type . '_indirect_referral_sponsored'} .
-//			' Paid Accounts To Enable Your ' . settings('plans')->indirect_referral_name . '!</h3>';
-//	}
-
-	return $str;
 }

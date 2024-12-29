@@ -2,159 +2,249 @@
 
 namespace BPL\Indirect_Referral;
 
-//require_once 'bpl/mods/income.php';
 require_once 'bpl/mods/query.php';
 require_once 'bpl/mods/cd_filter.php';
-require_once 'bpl/upline_support.php';
 require_once 'bpl/mods/helpers.php';
-
-//use function BPL\Mods\Income\main as income_global;
 
 use function BPL\Mods\Database\Query\update;
 use function BPL\Mods\Database\Query\insert;
-
 use function BPL\Mods\Commission_Deduct\Filter\main as cd_filter;
-
-//use function BPL\Upline_Support\main as upline_support;
 use function BPL\Mods\Url_SEF\sef;
 use function BPL\Mods\Url_SEF\qs;
-
 use function BPL\Mods\Helpers\db;
-use function BPL\Mods\Helpers\user;
 use function BPL\Mods\Helpers\settings;
 
 /**
- *
+ * Main function to process indirect referral bonuses for all users.
+ * This function iterates through all users and processes their indirect referral bonuses.
  *
  * @since version
  */
 function main()
 {
+	// Fetch indirect referral settings
 	$settings_ir = settings('indirect_referral');
 
+	// Fetch all users
 	$users = users();
 
+	// Process indirect referral bonus for each user
 	foreach ($users as $user) {
-		$account_type = $user->account_type;
-		$user_id = $user->id;
-		//		$username      = $user->username;
-//		$sponsor_id    = $user->sponsor_id;
-		$user_bonus_ir = $user->bonus_indirect_referral;
+		process_user_indirect_referral_bonus($user, $settings_ir);
+	}
+}
 
-		$sponsored = user_direct($user_id);
+/**
+ * Process indirect referral bonus for a single user.
+ * This function calculates and updates the indirect referral bonus for a given user.
+ *
+ * @param object $user The user object.
+ * @param object $settings_ir Indirect referral settings.
+ *
+ * @since version
+ */
+function process_user_indirect_referral_bonus($user, $settings_ir)
+{
+	$account_type = $user->account_type;
+	$user_id = $user->id;
+	$user_bonus_ir = $user->bonus_indirect_referral;
 
-		$type_level = $settings_ir->{$account_type . '_indirect_referral_level'};
-		$type_directs = $settings_ir->{$account_type . '_indirect_referral_sponsored'};
-		$income_limit_cycle = $settings_ir->{$account_type . '_indirect_referral_max_daily_income'};
-		$income_max = $settings_ir->{$account_type . '_indirect_referral_maximum'};
+	// Fetch direct referrals for the user
+	$sponsored = user_direct($user_id);
 
-		$user_ir = user_indirect($user_id);
+	// Fetch indirect referral level, required directs, income limits, and maximum income from settings
+	$type_level = $settings_ir->{$account_type . '_indirect_referral_level'};
+	$type_directs = $settings_ir->{$account_type . '_indirect_referral_sponsored'};
+	$income_limit_cycle = $settings_ir->{$account_type . '_indirect_referral_max_daily_income'};
+	$income_max = $settings_ir->{$account_type . '_indirect_referral_maximum'};
 
-		$income_today = $user_ir->income_today;
+	// Fetch user's indirect referral details
+	$user_ir = user_indirect($user_id);
+	$income_today = $user_ir->income_today;
 
-		if (
-			$type_level
-			//	        && empty(user_cd($user_id))
-			&& count($sponsored) >= $type_directs
-			/*&& (($income_limit_cycle > 0 && $income_today < $income_limit_cycle) || !$income_limit_cycle)
-					 && ($income_max > 0 && $user_bonus_ir < $income_max || !$income_max)*/
-		) {
-			// whole value
-			$ir_total = total($user_id)['bonus'];
-			$ir_add = $ir_total - $user_ir->bonus_indirect_last;
+	// Check if the user qualifies for indirect referral bonus
+	if ($type_level && count($sponsored) >= $type_directs) {
+		// Calculate total indirect referral bonus
+		$ir_total = calculate_total_indirect_referral_bonus($user_id, $type_level);
+		$ir_add = $ir_total - $user_ir->bonus_indirect_last;
 
-			if ($ir_add > 0) {
-				if ($income_limit_cycle > 0 && ($income_today + $ir_add) >= $income_limit_cycle) {
-					$ir_add = non_zero($income_limit_cycle - $income_today);
-				}
-
-				if ($income_max > 0 && ($user_bonus_ir + $ir_add) >= $income_max) {
-					$ir_add = non_zero($income_max - $user_bonus_ir);
-				}
-
-				// difference between last whole value and whole value now
-//				$bonus_ir_new = upline_support(cd_filter($user_id, $ir_add), $user_id);
-
-				/*if (*/
-				update_bonus_ir($ir_total, $ir_add, $user);/*)*/
-				//				{
-//					update_user($bonus_ir_new, $ir_add, $user_id);
-//					log_activity($ir_add, $user_id, $sponsor_id, $username);
-//				}
+		if ($ir_add > 0) {
+			// Apply daily and maximum income limits
+			if ($income_limit_cycle > 0 && ($income_today + $ir_add) >= $income_limit_cycle) {
+				$ir_add = non_zero($income_limit_cycle - $income_today);
 			}
+
+			if ($income_max > 0 && ($user_bonus_ir + $ir_add) >= $income_max) {
+				$ir_add = non_zero($income_max - $user_bonus_ir);
+			}
+
+			// Update indirect referral and user records
+			update_bonus_ir($ir_total, $ir_add, $user);
 		}
 	}
 }
 
 /**
- * @param $value
+ * Calculate the total indirect referral bonus for a user.
+ * This function calculates the total bonus based on the user's indirect referrals across all levels.
  *
- * @return int|mixed
+ * @param int $user_id The user ID.
+ * @param int $level The maximum indirect referral level.
+ * @return float The total indirect referral bonus.
  *
  * @since version
  */
-function non_zero($value)
+function calculate_total_indirect_referral_bonus($user_id, $level): float
 {
-	return $value < 0 ? 0 : $value;
+	$total_bonus = 0;
+
+	// Iterate through each level
+	for ($current_level = 1; $current_level <= $level; $current_level++) {
+		// Fetch users for the current level
+		$level_users = get_level_users($user_id, $current_level);
+
+		// Calculate bonus for the current level
+		$total_bonus += calculate_level_bonus($level_users, $current_level);
+	}
+
+	return $total_bonus;
 }
 
 /**
- * @param $ir
- * @param $ir_add
- * @param $user
+ * Fetch users for a specific level.
+ * This function retrieves users for a given level based on the user's direct and indirect referrals.
  *
- * @return void
+ * @param int $user_id The user ID.
+ * @param int $level The level.
+ * @return array The list of users for the level.
  *
  * @since version
  */
-function update_bonus_ir($ir, $ir_add, $user)
+function get_level_users($user_id, $level): array
+{
+	$users = [$user_id];
+
+	// Iterate through each level to fetch indirect referrals
+	for ($i = 1; $i < $level; $i++) {
+		$new_users = [];
+
+		foreach ($users as $user) {
+			$directs = user_direct($user);
+			$new_users = array_merge($new_users, $directs);
+		}
+
+		$users = $new_users;
+	}
+
+	return $users;
+}
+
+/**
+ * Calculate the indirect referral bonus for a specific level and users.
+ * This function calculates the bonus based on the user's account type and share percentage.
+ *
+ * @param array $users The list of users for the level.
+ * @param int $level The level.
+ * @return float The indirect referral bonus.
+ *
+ * @since version
+ */
+function calculate_level_bonus($users, $level): float
+{
+	$bonus = 0;
+
+	$settings_ir = settings('indirect_referral');
+
+	foreach ($users as $user) {
+		$account_type = $user->account_type;
+
+		// Fetch share for the level
+		$indirect_share = $settings_ir->{$account_type . '_indirect_referral_share_' . $level};
+
+		// Calculate the bonus for the user
+		$share = is_cd($account_type) ? 0 : $indirect_share;
+		$bonus += $share;
+	}
+
+	return $bonus;
+}
+
+/**
+ * Check if the account type includes 'cd'.
+ * This function checks if the account type includes the 'cd' suffix.
+ *
+ * @param string $account_type The account type.
+ * @return bool True if the account type includes 'cd', otherwise false.
+ *
+ * @since version
+ */
+function is_cd($account_type): bool
+{
+	$code_type_arr = explode('_', $account_type);
+	return in_array('cd', $code_type_arr, true);
+}
+
+/**
+ * Update indirect referral bonus for a user.
+ * This function updates the indirect referral bonus and related fields for a given user.
+ *
+ * @param float $total The total bonus.
+ * @param float $add The bonus to add.
+ * @param object $user The user object.
+ *
+ * @since version
+ */
+function update_bonus_ir($total, $add, $user)
 {
 	$db = db();
-
 	$user_id = $user->id;
 	$username = $user->username;
 	$sponsor_id = $user->sponsor_id;
 
+	// Fetch entry and freeze settings
 	$se = settings('entry');
 	$sf = settings('freeze');
 
 	$account_type = $user->account_type;
-
 	$income_cycle_global = $user->income_cycle_global;
 
+	// Calculate freeze limit
 	$entry = $se->{$account_type . '_entry'};
 	$factor = $sf->{$account_type . '_percentage'} / 100;
-
 	$freeze_limit = $entry * $factor;
 
 	$status = $user->status_global;
 
+	// Check if income cycle exceeds freeze limit
 	if ($income_cycle_global >= $freeze_limit) {
 		if ($status === 'active') {
+			// Update user status and flushout income
 			update(
 				'network_users',
 				[
 					'status_global = ' . $db->quote('inactive'),
-					'income_flushout = income_flushout + ' . $ir_add
+					'income_flushout = income_flushout + ' . $add
 				],
 				['id = ' . $db->quote($user_id)]
 			);
 		}
 
-		update_network_ir($ir, 0, $user_id);
+		// Update indirect referral record
+		update_network_ir($total, 0, $user_id);
 	} else {
 		$diff = $freeze_limit - $income_cycle_global;
 
-		if ($diff < $ir_add) {
-			$flushout_global = $ir_add - $diff;
+		if ($diff < $add) {
+			$flushout_global = $add - $diff;
 
 			if ($user->status_global === 'active') {
+				// Update user bonus and status
 				$field_user = ['bonus_indirect_referral = bonus_indirect_referral + ' . $diff];
-
 				$field_user[] = 'status_global = ' . $db->quote('inactive');
 				$field_user[] = 'income_cycle_global = income_cycle_global + ' . cd_filter($user_id, $diff);
 				$field_user[] = 'income_flushout = income_flushout + ' . $flushout_global;
 
+				// Update balance or payout transfer based on withdrawal mode
 				if (settings('ancillaries')->withdrawal_mode === 'standard') {
 					$field_user[] = 'balance = balance + ' . cd_filter($user_id, $diff);
 				} else {
@@ -168,17 +258,19 @@ function update_bonus_ir($ir, $ir_add, $user)
 				);
 			}
 
-			update_network_ir($ir, $diff, $user_id);
+			// Update indirect referral record and log activity
+			update_network_ir($total, $diff, $user_id);
 			log_activity($diff, $user_id, $sponsor_id, $username);
 		} else {
-			$field_user = ['bonus_indirect_referral = bonus_indirect_referral + ' . $ir_add];
+			// Update user bonus
+			$field_user = ['bonus_indirect_referral = bonus_indirect_referral + ' . $add];
+			$field_user[] = 'income_cycle_global = income_cycle_global + ' . cd_filter($user_id, $add);
 
-			$field_user[] = 'income_cycle_global = income_cycle_global + ' . cd_filter($user_id, $ir_add);
-
+			// Update balance or payout transfer based on withdrawal mode
 			if (settings('ancillaries')->withdrawal_mode === 'standard') {
-				$field_user[] = 'balance = balance + ' . cd_filter($user_id, $ir_add);
+				$field_user[] = 'balance = balance + ' . cd_filter($user_id, $add);
 			} else {
-				$field_user[] = 'payout_transfer = payout_transfer + ' . cd_filter($user_id, $ir_add);
+				$field_user[] = 'payout_transfer = payout_transfer + ' . cd_filter($user_id, $add);
 			}
 
 			update(
@@ -187,70 +279,47 @@ function update_bonus_ir($ir, $ir_add, $user)
 				['id = ' . $db->quote($user_id)]
 			);
 
-			update_network_ir($ir, $ir_add, $user_id);
-			log_activity($ir_add, $user_id, $sponsor_id, $username);
+			// Update indirect referral record and log activity
+			update_network_ir($total, $add, $user_id);
+			log_activity($add, $user_id, $sponsor_id, $username);
 		}
 	}
 }
 
-function fixed_daily($user_id)
-{
-	$db = db();
-
-	return $db->setQuery(
-		'SELECT * ' .
-		'FROM network_fixed_daily ' .
-		'WHERE user_id = ' . $db->quote($user_id)
-	)->loadObject();
-}
-
-function update_network_ir($ir, $ir_add, $user_id)
+/**
+ * Update indirect referral record for a user.
+ * This function updates the indirect referral bonus and related fields in the network_indirect table.
+ *
+ * @param float $total The total bonus.
+ * @param float $add The bonus to add.
+ * @param int $user_id The user ID.
+ *
+ * @since version
+ */
+function update_network_ir($total, $add, $user_id)
 {
 	$db = db();
 
 	update(
 		'network_indirect',
 		[
-			'bonus_indirect = bonus_indirect + ' . $ir_add,
-			'bonus_indirect_now = bonus_indirect_now + ' . $ir_add,
-			'bonus_indirect_last = ' . $db->quote($ir),
-			'income_today = income_today + ' . $ir_add
+			'bonus_indirect = bonus_indirect + ' . $add,
+			'bonus_indirect_now = bonus_indirect_now + ' . $add,
+			'bonus_indirect_last = ' . $db->quote($total),
+			'income_today = income_today + ' . $add
 		],
 		['user_id = ' . $db->quote($user_id)]
 	);
 }
 
 /**
- * @param $bonus_ir_new
- * @param $ir_add
- * @param $user_id
+ * Log indirect referral bonus activity.
+ * This function logs the activity when a user earns an indirect referral bonus.
  *
- *
- * @since version
- */
-function update_user($bonus_ir_new, $ir_add, $user_id)
-{
-	$field_user = ['bonus_indirect_referral = bonus_indirect_referral + ' . $ir_add];
-
-	if (settings('ancillaries')->withdrawal_mode === 'standard') {
-		$field_user[] = 'balance = balance + ' . $bonus_ir_new;
-	} else {
-		$field_user[] = 'payout_transfer = payout_transfer + ' . $bonus_ir_new;
-	}
-
-	update(
-		'network_users',
-		$field_user,
-		['id = ' . db()->quote($user_id)]
-	);
-}
-
-/**
- * @param $ir
- * @param $user_id
- * @param $sponsor_id
- * @param $username
- *
+ * @param float $ir The bonus amount.
+ * @param int $user_id The user ID.
+ * @param int $sponsor_id The sponsor ID.
+ * @param string $username The username.
  *
  * @since version
  */
@@ -279,12 +348,14 @@ function log_activity($ir, $user_id, $sponsor_id, $username)
 }
 
 /**
+ * Fetch all users.
+ * This function retrieves all users except those with the 'starter' account type.
  *
- * @return array|mixed
+ * @return array The list of users.
  *
  * @since version
  */
-function users()
+function users(): array
 {
 	$db = db();
 
@@ -296,13 +367,15 @@ function users()
 }
 
 /**
- * @param $sponsor_id
+ * Fetch direct referrals for a given sponsor.
+ * This function retrieves all direct referrals for a given sponsor ID.
  *
- * @return array|mixed
+ * @param int $sponsor_id The sponsor ID.
+ * @return array The list of direct referrals.
  *
  * @since version
  */
-function user_direct($sponsor_id)
+function user_direct($sponsor_id): array
 {
 	$db = db();
 
@@ -315,28 +388,12 @@ function user_direct($sponsor_id)
 }
 
 /**
- * @param $user_id
+ * Fetch indirect referral details for a user.
+ * This function retrieves indirect referral details for a given user ID.
  *
- * @return mixed|null
+ * @param int $user_id The user ID.
+ * @return mixed|null The indirect referral details.
  *
- * @since version
- */
-function user_cd($user_id)
-{
-	$db = db();
-
-	return $db->setQuery(
-		'SELECT * ' .
-		'FROM network_commission_deduct ' .
-		'WHERE id = ' . $db->quote($user_id)
-	)->loadObject();
-}
-
-/**
- * @param $user_id
- *
- *
- * @return mixed|null
  * @since version
  */
 function user_indirect($user_id)
@@ -351,271 +408,15 @@ function user_indirect($user_id)
 }
 
 /**
- * @param   array  $lvl_1
+ * Ensure the value is non-negative.
+ * This function returns the value if it is non-negative, otherwise returns 0.
  *
- * @return array[]
- *
- * @since version
- */
-function level(array $lvl_1 = []): array
-{
-	$lvl_2 = [];
-	$type = [];
-
-	if (!empty($lvl_1)) {
-		foreach ($lvl_1 as $head) {
-			$user_direct = user_direct($head);
-
-			if ($user_direct) {
-				foreach ($user_direct as $body) {
-					$lvl_2[] = $body->id;
-					$type[] = $body->account_type . (!empty(user_cd($body->id)) ? '_cd' : '');
-				}
-			}
-		}
-	}
-
-	return [$lvl_2, $type];
-}
-
-function is_cd($account_type): bool
-{
-	$code_type_arr = explode('_', $account_type);
-
-	return in_array('cd', $code_type_arr, true);
-}
-
-/**
- * @param          $level
- * @param          $user_id
- *
- * @return array
+ * @param mixed $value The value to check.
+ * @return int|mixed The non-negative value.
  *
  * @since version
  */
-function nested($level, $user_id): array
+function non_zero($value)
 {
-	$result[] = level([$user_id]);
-
-	for ($i_i = 2; $i_i <= $level; $i_i++) {
-		$last = array_reverse($result)[0];
-
-		$result[] = level($last[0]);
-	}
-
-	return $result;
-}
-
-/**
- * @param $indirects
- * @param $head_account_type
- * @param $level
- *
- * @return float|int
- *
- * @since version
- */
-function get($indirects, $head_account_type, $level)
-{
-	$indirect_referral = 0;
-
-	$sir = settings('indirect_referral');
-
-	// $head_share = $sir->{$head_account_type . '_indirect_referral_share_' . $level};
-
-	if (count($indirects) > 0) {
-		foreach ($indirects as $account_type) {
-			$indirect_share = $sir->{$account_type . '_indirect_referral_share_' . $level};
-
-			$share = is_cd($account_type) ? 0 : $indirect_share;
-			// ($indirect_share < $head_share ? $indirect_share : $head_share);
-
-			$indirect_referral += $share;
-		}
-	}
-
-	return $indirect_referral;
-}
-
-/**
- * @param $head_account_type
- * @param $indirects
- * @param $ctr
- *
- * @return array
- *
- * @since version
- */
-function bonus($head_account_type, $indirects, $ctr): array
-{
-	return [
-		'member' => count($indirects[0]),
-		'bonus' => get($indirects[1], $head_account_type, $ctr)
-	];
-}
-
-/**
- * @param $user_id
- *
- * @return array
- *
- * @since version
- */
-function total($user_id): array
-{
-	$sir = settings('indirect_referral');
-
-	$head_account_type = user($user_id)->account_type;
-
-	$type_level = $sir->{$head_account_type . '_indirect_referral_level'};
-
-	$member = 0;
-	$bonus = 0;
-
-	$ctr = 1;
-
-	$results = nested($type_level, $user_id);
-
-	foreach ($results as $result) {
-		$member += count($result[0]);
-		$bonus += get($result[1], $head_account_type, $ctr);
-
-		$ctr++;
-	}
-
-	return [
-		'member' => $member,
-		'bonus' => $bonus
-	];
-}
-
-/**
- * @param $user_id
- *
- * @return string
- *
- * @since version
- */
-function view($user_id): string
-{
-	$sa = settings('ancillaries');
-	$sp = settings('plans');
-	$se = settings('entry');
-	$sir = settings('indirect_referral');
-
-	$user = user($user_id);
-
-	$head_account_type = $user->account_type;
-
-	$currency = $sa->currency;
-
-	$str = '';
-
-	$type_level = $sir->{$head_account_type . '_indirect_referral_level'};
-
-	if ($type_level && $head_account_type !== 'starter') {
-		$str .= '<h3>' . $sp->indirect_referral_name . '</h3>';
-		$str .= '<table class="category table table-striped table-bordered table-hover">';
-		$str .= '<thead>';
-		$str .= '<tr>';
-
-		$str .= '<th>';
-		$str .= '<div style="text-align: center"><h4>Level</h4></div>';
-		$str .= '</th>';
-
-		$str .= '<th>';
-		$str .= '<div style="text-align: center"><h4>Member</h4></div>';
-		$str .= '</th>';
-
-		$str .= '<th>';
-		$str .= '<div style="text-align: center"><h4>Profit (' . $currency . ')</h4></div>';
-		$str .= '</th>';
-
-		$str .= '<th>';
-		$str .= '<div style="text-align: center"><h4>Allocation (%)</h4></div>';
-		$str .= '</th>';
-
-		$str .= '</tr>';
-		$str .= '</thead>';
-		$str .= '<tbody>';
-
-		$results = nested($type_level, $user_id);
-
-		$ctr = 1;
-
-		foreach ($results as $result) {
-			$member = bonus($head_account_type, $result, $ctr)['member'];
-			$bonus = bonus($head_account_type, $result, $ctr)['bonus'];
-
-			$str .= '<tr>';
-
-			$str .= '<td>';
-			$str .= '<div style="text-align: center" ' . ($ctr === 1 ? 'style="color: red"' : '') . '>
-                            <strong>' . ($ctr !== 1 ? $ctr : '') .
-				($ctr === 1 ? ' (Direct)' : '') . '</strong>
-                        </div>';
-			$str .= '</td>';
-
-			$str .= '<td>';
-			$str .= '<div style="text-align: center" ' .
-				($ctr === 1 ? 'style="color: red"' : '') . '>' .
-				($ctr === 1 ? ('(' . $member . ')') : $member) . '</div>';
-			$str .= '</td>';
-
-			$str .= '<td>';
-			$str .= '<div style="text-align: center" ' .
-				($ctr === 1 ? 'style="color: red"' : '') . '>' .
-				($ctr === 1 ? ('(' . number_format($bonus, 8) . ')') :
-					number_format($bonus, 8)) . '</div>';
-			$str .= '</td>';
-
-			$share = $sir->{$head_account_type . '_indirect_referral_share_' . $ctr};
-			$entry = $se->{$head_account_type . '_entry'};
-
-			$percent = $entry > 0 ? ($share / $entry) * 100 : 0;
-
-			$str .= '<td>';
-			$str .= '<div style="text-align: center" ' .
-				($ctr === 1 ? 'style="color: red"' : '') . '>' .
-				($ctr === 1 ? ('(' . number_format($percent, 2) . ')') :
-					number_format($percent, 2)) . '</div>';
-			$str .= '</td>';
-
-			$str .= '</tr>';
-
-			$ctr++;
-		}
-
-		$user_indirect = user_indirect($user_id);
-
-		$flushout_global = $user_indirect->flushout_global;
-		$flushout_local = $user_indirect->flushout_local;
-
-		$str .= '<tr>';
-		$str .= '<td>';
-		$str .= '<div style="text-align: center"><strong>Total</strong></div>';
-		$str .= '</td>';
-		$str .= '<td>';
-		$str .= '<div style="text-align: center">' . (total($user_id)['member']) . '</div>';
-		$str .= '</td>';
-		$str .= '<td>';
-		$str .= '<div style="text-align: center">' .
-			number_format(/*total($user_id)['bonus']*/
-				($user->bonus_indirect_referral - $flushout_global - $flushout_local),
-				8
-			) . '</div>';
-		$str .= '</td>';
-		$str .= '<td>';
-		$str .= '<div style="text-align: center">N/A</div>';
-		$str .= '</td>';
-		$str .= '</tr>';
-		$str .= '</tbody>';
-		$str .= '</table>';
-	} else {
-		$str .= '<h3 style="alignment: center">Sponsor At Least ' .
-			$sir->{$head_account_type . '_indirect_referral_sponsored'} .
-			' Paid Accounts To Enable Your ' . settings('plans')->indirect_referral_name . '!</h3>';
-	}
-
-	return $str;
+	return $value < 0 ? 0 : $value;
 }
