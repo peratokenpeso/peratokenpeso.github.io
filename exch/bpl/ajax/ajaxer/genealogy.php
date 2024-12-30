@@ -49,9 +49,11 @@ function main($type, $user_id, string $plan = 'binary_pair'): string
                 height: 100vh;
                 max-height: 100vh;
                 overflow: hidden;
-                touch-action: none;
                 position: relative;
                 padding-top: var(--spacing-top);
+                touch-action: none; /* Disable browser's default touch handling */
+                -webkit-user-select: none; /* Prevent text selection during drag */
+                user-select: none;
             }
 
             #genealogy_{$type} svg {
@@ -130,8 +132,6 @@ function main($type, $user_id, string $plan = 'binary_pair'): string
                 stroke: var(--color-secondary);
                 stroke-width: var(--stroke-width-small);
             }
-
-            /* Rest of the styles remain the same */
         </style>
         <div id="genealogy_{$type}">
             <div class="border-container"></div>
@@ -254,18 +254,104 @@ function render($type, $user_id, $plan): string
                 this.updateDimensions();
                 this.initializeResizeHandler();
                 
-                this.touchDistance = 0;
-                this.touching = false;
+                // Touch interaction state
+                this.touchState = {
+                    isDragging: false,
+                    lastX: 0,
+                    lastY: 0,
+                    startX: 0,
+                    startY: 0,
+                    transform: null
+                };
                 
                 this.tooltip = d3.select("#tooltip");
-                
-                // Define initial vertical offset
-                this.initialVerticalOffset = 60; // Increased offset to avoid border
+                this.initialVerticalOffset = 60;
                 
                 this.initializeSVG();
                 this.initializeTree(data);
                 this.setupZoom();
                 this.setupControls();
+                this.setupTouchInteractions();
+            }
+
+            setupTouchInteractions() {
+                const container = this.container.node();
+                
+                // Touch start handler
+                container.addEventListener('touchstart', (e) => {
+                    if (e.touches.length === 1) {
+                        // Single touch - initialize drag
+                        const touch = e.touches[0];
+                        this.touchState.isDragging = true;
+                        this.touchState.lastX = touch.clientX;
+                        this.touchState.lastY = touch.clientY;
+                        this.touchState.startX = touch.clientX;
+                        this.touchState.startY = touch.clientY;
+                        this.touchState.transform = d3.zoomTransform(this.svg.node());
+                    } else if (e.touches.length === 2) {
+                        // Two touches - prepare for pinch zoom
+                        this.touchState.isDragging = false;
+                        const touch1 = e.touches[0];
+                        const touch2 = e.touches[1];
+                        this.touchDistance = Math.hypot(
+                            touch2.clientX - touch1.clientX,
+                            touch2.clientY - touch1.clientY
+                        );
+                    }
+                }, { passive: true });
+
+                // Touch move handler
+                container.addEventListener('touchmove', (e) => {
+                    if (e.touches.length === 1 && this.touchState.isDragging) {
+                        // Handle drag
+                        const touch = e.touches[0];
+                        const dx = touch.clientX - this.touchState.lastX;
+                        const dy = touch.clientY - this.touchState.lastY;
+                        
+                        // Update last position
+                        this.touchState.lastX = touch.clientX;
+                        this.touchState.lastY = touch.clientY;
+                        
+                        // Calculate new transform
+                        const transform = this.touchState.transform;
+                        const newTransform = transform.translate(
+                            dx / transform.k,
+                            dy / transform.k
+                        );
+                        
+                        // Apply the new transform
+                        this.svg.call(
+                            this.zoom.transform,
+                            newTransform
+                        );
+                    } else if (e.touches.length === 2) {
+                        // Handle pinch zoom
+                        const touch1 = e.touches[0];
+                        const touch2 = e.touches[1];
+                        const newDistance = Math.hypot(
+                            touch2.clientX - touch1.clientX,
+                            touch2.clientY - touch1.clientY
+                        );
+                        
+                        if (this.touchDistance) {
+                            const delta = newDistance / this.touchDistance;
+                            this.zoom.scaleBy(this.svg, delta);
+                            this.touchDistance = newDistance;
+                        }
+                    }
+                }, { passive: true });
+
+                // Touch end handler
+                container.addEventListener('touchend', () => {
+                    this.touchState.isDragging = false;
+                    this.touchDistance = null;
+                }, { passive: true });
+
+                // Touch cancel handler
+                container.addEventListener('touchcancel', () => {
+                    this.touchState.isDragging = false;
+                    this.touchDistance = null;
+                }, { passive: true });
             }
 
             updateDimensions() {
@@ -347,33 +433,11 @@ function render($type, $user_id, $plan): string
                         this.zoomGroup.attr("transform", transform);
                     });
 
-                // Set initial transform with vertical offset
                 const initialTransform = d3.zoomIdentity
                     .translate(CONFIG.margin.left, CONFIG.margin.top + this.initialVerticalOffset);
 
                 this.svg.call(this.zoom)
-                    .call(this.zoom.transform, initialTransform)
-                    .on("touchstart", (event) => {
-                        if (event.touches.length === 2) {
-                            this.touching = true;
-                            const p1 = event.touches[0];
-                            const p2 = event.touches[1];
-                            this.touchDistance = Math.hypot(p2.pageX - p1.pageX, p2.pageY - p1.pageY);
-                        }
-                    })
-                    .on("touchmove", (event) => {
-                        if (this.touching && event.touches.length === 2) {
-                            const p1 = event.touches[0];
-                            const p2 = event.touches[1];
-                            const newDistance = Math.hypot(p2.pageX - p1.pageX, p2.pageY - p1.pageY);
-                            const delta = newDistance / this.touchDistance;
-                            this.touchDistance = newDistance;
-                            this.zoom.scaleBy(this.svg, delta);
-                        }
-                    })
-                    .on("touchend", () => {
-                        this.touching = false;
-                    });
+                    .call(this.zoom.transform, initialTransform);
             }
         
             /**
@@ -597,16 +661,18 @@ function render($type, $user_id, $plan): string
              * @private
              */
             handleMouseOver(node) {
-                // Clear any existing timeouts
                 if (this.tooltipTimeout) {
                     clearTimeout(this.tooltipTimeout);
                 }
                 
-                this.tooltip
-                    .style("opacity", "1")
-                    .html(this.generateTooltipContent(node.data.details));
+                // Check if we're not currently dragging on mobile
+                if (!this.touchState.isDragging) {
+                    this.tooltip
+                        .style("opacity", "1")
+                        .html(this.generateTooltipContent(node.data.details));
+                }
             }
-        
+
             {$tooltipContent}
         
             /**
@@ -616,20 +682,17 @@ function render($type, $user_id, $plan): string
              */
             handleMouseMove(event) {
                 const isMobile = window.innerWidth <= 768;
-                if (!isMobile) {
+                if (!isMobile && !this.touchState.isDragging) {
                     const tooltipWidth = this.tooltip.node().offsetWidth;
                     const tooltipHeight = this.tooltip.node().offsetHeight;
                     
-                    // Calculate position to keep tooltip within viewport
                     let left = event.pageX + 15;
                     let top = event.pageY - tooltipHeight - 10;
                     
-                    // Adjust if tooltip would go off right edge
                     if (left + tooltipWidth > window.innerWidth) {
                         left = event.pageX - tooltipWidth - 15;
                     }
                     
-                    // Adjust if tooltip would go off top edge
                     if (top < 0) {
                         top = event.pageY + 20;
                     }
