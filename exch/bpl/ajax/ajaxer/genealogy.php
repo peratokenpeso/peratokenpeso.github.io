@@ -115,7 +115,6 @@ function main($type, $user_id, string $plan = 'binary_pair'): string
                 border-radius: var(--border-radius);
             }
 
-            /* Previous styles remain the same */
             #genealogy_{$type} .node circle {
                 fill: var(--color-background);
                 stroke: var(--color-primary);
