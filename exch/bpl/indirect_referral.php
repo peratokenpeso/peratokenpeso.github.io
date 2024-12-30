@@ -57,7 +57,7 @@ function main()
 			//	        && empty(user_cd($user_id))
 			&& count($sponsored) >= $type_directs
 			/*&& (($income_limit_cycle > 0 && $income_today < $income_limit_cycle) || !$income_limit_cycle)
-					 && ($income_max > 0 && $user_bonus_ir < $income_max || !$income_max)*/
+							  && ($income_max > 0 && $user_bonus_ir < $income_max || !$income_max)*/
 		) {
 			// whole value
 			$ir_total = total($user_id)['bonus'];
